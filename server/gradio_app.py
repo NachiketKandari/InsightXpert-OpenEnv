@@ -24,6 +24,83 @@ DIFF_BADGE = {
 }
 
 
+def _schema_to_markdown(schema: str) -> str:
+    """Convert schema linking text to formatted markdown."""
+    lines: List[str] = []
+    for raw_line in schema.splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("Table:"):
+            table_name = stripped.replace("Table:", "").strip().strip('"')
+            lines.append(f"**`{table_name}`**")
+        elif stripped.startswith("Columns:"):
+            continue
+        elif stripped.startswith("- "):
+            # Column definition: - "col" (TYPE, PK, FK): description
+            col_text = stripped[2:]
+            # Find the type annotation paren after the column name.
+            # Column name is in quotes; type paren starts after the closing quote.
+            quote_end = col_text.rfind('"')
+            if quote_end != -1:
+                type_start = col_text.find("(", quote_end)
+            else:
+                type_start = col_text.find("(")
+            if type_start != -1:
+                type_end = col_text.find(")", type_start)
+            else:
+                type_end = -1
+            if type_end != -1 and col_text[type_end + 1 : type_end + 3] == ": ":
+                col_header = col_text[: type_end + 1]
+                col_desc = col_text[type_end + 3 :].strip()
+                lines.append(f"- `{col_header}` — {col_desc}")
+            else:
+                lines.append(f"- `{col_text}`")
+        elif stripped:
+            lines.append(stripped)
+    return "\n".join(lines)
+
+
+def _sample_rows_to_markdown(sample: str) -> str:
+    """Convert pipe-separated sample rows to markdown tables."""
+    tables: List[str] = []
+    current_header = ""
+    header_row = ""
+    data_rows: List[str] = []
+
+    def _flush():
+        nonlocal header_row, data_rows
+        if not header_row:
+            return
+        cols = [c.strip() for c in header_row.split("|")]
+        md = "| " + " | ".join(cols) + " |\n"
+        md += "| " + " | ".join("---" for _ in cols) + " |\n"
+        for dr in data_rows:
+            vals = [v.strip() for v in dr.split("|")]
+            # Pad or trim to match header column count
+            while len(vals) < len(cols):
+                vals.append("")
+            vals = vals[: len(cols)]
+            md += "| " + " | ".join(vals) + " |\n"
+        label = f"**`{current_header}`**\n\n" if current_header else ""
+        tables.append(label + md)
+        header_row = ""
+        data_rows = []
+
+    for raw_line in sample.splitlines():
+        stripped = raw_line.strip()
+        if stripped.startswith("-- "):
+            _flush()
+            current_header = stripped[3:].strip()
+        elif set(stripped) <= {"-", " "}:
+            continue  # separator line
+        elif "|" in stripped:
+            if not header_row:
+                header_row = stripped
+            else:
+                data_rows.append(stripped)
+    _flush()
+    return "\n".join(tables)
+
+
 def _format_task_info(obs: Dict[str, Any]) -> str:
     """Format task observation as Markdown with difficulty badge."""
     diff = obs.get("difficulty", "")
@@ -43,20 +120,24 @@ def _format_task_info(obs: Dict[str, Any]) -> str:
     if evidence:
         lines += ["", f"**Evidence:** {evidence}"]
     if schema:
+        schema_md = _schema_to_markdown(schema)
         lines += [
             "",
             "<details><summary><b>Relevant Schema</b> (click to expand)</summary>",
             "",
-            f"```sql\n{schema}\n```",
+            schema_md,
+            "",
             "</details>",
         ]
     sample = obs.get("sample_rows", "")
     if sample:
+        sample_md = _sample_rows_to_markdown(sample)
         lines += [
             "",
             "<details><summary><b>Sample Rows</b> (click to expand)</summary>",
             "",
-            f"```\n{sample}\n```",
+            sample_md,
+            "",
             "</details>",
         ]
     return "\n".join(lines)
