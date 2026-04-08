@@ -186,12 +186,11 @@ def _format_task_info(obs: Dict[str, Any]) -> str:
     if evidence:
         lines += ["", f"**Evidence:** _{evidence}_"]
     if schema:
-        schema_md = _schema_to_markdown(schema)
         lines += [
             "",
             "<details><summary><b>Relevant Schema</b></summary>",
             "",
-            schema_md,
+            f"```\n{schema}\n```",
             "",
             "</details>",
         ]
