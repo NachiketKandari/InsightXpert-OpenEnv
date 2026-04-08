@@ -13,8 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy environment code
 COPY . .
 
-# Enable built-in Gradio web interface at /
-ENV ENABLE_WEB_INTERFACE=true
+# Custom Gradio UI is mounted directly in server/app.py (no ENABLE_WEB_INTERFACE needed)
 
 # Expose port (HF Spaces default)
 EXPOSE 7860
