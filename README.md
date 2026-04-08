@@ -39,7 +39,6 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 | `question` | `str` | Natural language question |
 | `evidence` | `str` | External knowledge hint |
 | `schema_linking` | `str` | Relevant tables and columns for this question |
-| `sample_rows` | `str` | Sample data rows (3 per table, on reset only) |
 | `execution_result` | `str` | Query output or error message |
 | `execution_success` | `bool` | Did the SQL execute without error? |
 | `row_count` | `int` | Number of result rows |
@@ -88,7 +87,7 @@ pip install -e ".[inference]"
 uvicorn server.app:app --host 0.0.0.0 --port 7860
 
 # Run the baseline agent (in another terminal)
-export API_KEY=your_api_key
+export HF_TOKEN=your_hf_token
 python inference.py
 ```
 
@@ -105,7 +104,7 @@ docker run -p 7860:7860 bird-text2sql-env
 |----------|---------|-------------|
 | `API_BASE_URL` | `https://router.huggingface.co/v1` | LLM API endpoint (OpenAI-compatible) |
 | `MODEL_NAME` | `Qwen/Qwen3-8B` | Model to use for inference |
-| `HF_TOKEN` / `API_KEY` | - | HuggingFace API token |
+| `HF_TOKEN` | - | HuggingFace API token |
 | `ENV_URL` | `http://localhost:7860` | Environment server URL |
 
 ## File Structure
