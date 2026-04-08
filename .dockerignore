@@ -1,0 +1,17 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+.env.*
+.DS_Store
+*.log
+PLAN.md
+DESIGN.md
+AUDIT.md
+transcript.txt
+.agents/
+.claude/
+data/perfect_linking_*.json
+data/profiles/
