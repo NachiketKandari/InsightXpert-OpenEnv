@@ -8,7 +8,7 @@ Do NOT create commits attributed to or co-authored by Claude. No `Co-Authored-By
 
 ## What This Project Is
 
-A Text-to-SQL task environment implementing the OpenEnv specification, deployed to HuggingFace Spaces (Docker SDK, port 7860). AI agents translate natural language questions into executable SQL queries against real-world SQLite databases from the BIRD benchmark. 150 tasks span 3 difficulty levels (50 simple, 50 moderate, 50 challenging) across 5 SQLite databases (california_schools, debit_card_specializing, financial, formula_1, toxicology).
+A Text-to-SQL task environment implementing the OpenEnv specification, deployed to HuggingFace Spaces (Docker SDK, port 7860). AI agents translate natural language questions into executable SQL queries against real-world SQLite databases from the BIRD benchmark. 200 tasks span 3 difficulty levels (85 simple, 65 moderate, 50 challenging) across 5 SQLite databases (california_schools, debit_card_specializing, financial, formula_1, toxicology).
 
 ## Commands
 
@@ -56,13 +56,13 @@ The project follows the OpenEnv contract: typed action/observation/state models,
 - `server/grader.py` — 4-tier reward computation (0.0-1.0): error tiers (0.00-0.15), Soft-F1 partial match (0.20-0.90), Relaxed EX (0.95), Strict EX (1.0). Order-sensitive only when gold SQL has ORDER BY.
 - `server/app.py` — FastAPI app factory using `openenv.core.env_server.create_app()`. Exposes `/health`, `/reset`, `/step`, `/state`.
 - `client.py` — `BirdText2SQLEnv` WebSocket client extending `EnvClient`. `env.reset()` and `env.step()` return `StepResult` objects (from `openenv.core.client_types`), not raw observations.
-- `inference.py` — Baseline agent: iterates all 150 tasks (loaded dynamically from tasks.json), calls LLM, self-corrects using feedback from failed steps.
-- `scripts/build_tasks.py` — Builds `data/tasks.json` and `data/schema_linking.json` from InsightXpert's `perfect_linking_bird_dev.json`. Selects 150 tasks (50/50/50 by difficulty) across 5 DBs.
+- `inference.py` — Baseline agent: iterates all 200 tasks (loaded dynamically from tasks.json), calls LLM, self-corrects using feedback from failed steps.
+- `scripts/build_tasks.py` — Builds `data/tasks.json` and `data/schema_linking.json` by merging InsightXpert's `perfect_linking_bird_dev.json` and `perfect_linking_mini_dev_evidence.json` (enriched schema). Selects 200 tasks (85/65/50 by difficulty) across 5 DBs.
 - `schema_linking/` — Offline data-generation tool (NOT runtime code). Generates `data/schema_linking.json` which the server loads at startup. Requires the `dev` extra (`pip install -e ".[dev]"`).
 
 **Data:**
-- `data/tasks.json` — 150 tasks with gold SQL (runtime-critical, loaded at startup)
-- `data/schema_linking.json` — Schema linking data (runtime-critical, loaded at startup; server crashes if missing)
+- `data/tasks.json` — 200 tasks with gold SQL (runtime-critical, loaded at startup)
+- `data/schema_linking.json` — Schema linking data with evidence-enriched schema where available (runtime-critical, loaded at startup; server crashes if missing)
 - `data/databases/{db_id}/{db_id}.sqlite` — 5 SQLite databases tracked via **Git LFS** (`.gitattributes` tracks `*.sqlite`)
 
 ## Key Constraints
@@ -72,7 +72,7 @@ The project follows the OpenEnv contract: typed action/observation/state models,
 - SQL execution timeout: 5 seconds
 - Each episode gets a fresh in-memory copy of the database (no cross-episode state leakage)
 - **Concurrent sessions supported** (`SUPPORTS_CONCURRENT_SESSIONS = True`, `max_concurrent_envs=64`) — each session gets its own in-memory DB copy
-- No test suite exists; validation is done by running `inference.py` against all 150 tasks
+- No test suite exists; validation is done by running `inference.py` against all 200 tasks
 - No linting, formatting, or CI tooling is configured
 
 ## Important Patterns

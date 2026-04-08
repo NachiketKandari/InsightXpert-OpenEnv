@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Build tasks.json and schema_linking.json from InsightXpert perfect_linking data.
 
-Selects 150 tasks (50 simple, 50 moderate, 50 challenging) spread across 5 DBs.
+Merges two data sources:
+  - perfect_linking_bird_dev.json (707 entries, 6 DBs)
+  - perfect_linking_mini_dev_evidence.json (498 entries, 11 DBs, enriched schema)
+
+For overlapping questions, the evidence-enriched schema_text is preferred.
+Selects 200 tasks (85 simple, 65 moderate, 50 challenging) across 5 DBs.
 Excludes european_football_2 (570MB, too heavy for HF Spaces deployment).
 
 Usage:
     python3 scripts/build_tasks.py
-
-Reads:
-    ../InsightXpert/perfect_linking/perfect_linking_bird_dev.json
 
 Writes:
     data/tasks.json
@@ -19,31 +21,71 @@ from __future__ import annotations
 
 import json
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 # --- Configuration ---
-LINKING_FILE = Path(__file__).resolve().parent.parent.parent / "InsightXpert" / "perfect_linking" / "perfect_linking_bird_dev.json"
+LINKING_DIR = Path(__file__).resolve().parent.parent.parent / "InsightXpert" / "perfect_linking"
+BIRD_DEV_FILE = LINKING_DIR / "perfect_linking_bird_dev.json"
+EVIDENCE_FILE = LINKING_DIR / "perfect_linking_mini_dev_evidence.json"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data"
 
 INCLUDE_DBS = {"formula_1", "toxicology", "financial", "california_schools", "debit_card_specializing"}
-TARGET_PER_DIFFICULTY = 50
+TARGETS = {"simple": 85, "moderate": 65, "challenging": 50}
 DIFFICULTIES = ["simple", "moderate", "challenging"]
 
 
-def load_entries() -> list[dict]:
-    """Load and filter entries from perfect_linking_bird_dev.json."""
-    with open(LINKING_FILE) as f:
-        raw = json.load(f)
-    entries = []
-    for val in raw.values():
-        if val["db_id"] in INCLUDE_DBS:
-            entries.append(val)
-    return entries
+def load_and_merge() -> list[dict]:
+    """Load entries from both sources, merge by question_id.
+
+    For questions present in both files, the evidence-enriched schema_text
+    is used while gold_sql comes from bird_dev (authoritative source).
+    """
+    # Load bird_dev (primary source for gold SQL and questions)
+    with open(BIRD_DEV_FILE) as f:
+        bird_raw = json.load(f)
+
+    # Load mini_dev_evidence (enriched schema_text)
+    with open(EVIDENCE_FILE) as f:
+        evidence_raw = json.load(f)
+
+    # Index evidence entries by question_id for fast lookup
+    evidence_by_qid: dict[int, dict] = {}
+    for val in evidence_raw.values():
+        evidence_by_qid[val["question_id"]] = val
+
+    # Merge: start with bird_dev, enrich schema_text from evidence where available
+    merged: dict[int, dict] = {}
+    enriched_count = 0
+
+    for val in bird_raw.values():
+        if val["db_id"] not in INCLUDE_DBS:
+            continue
+        qid = val["question_id"]
+        entry = dict(val)
+        # Prefer evidence-enriched schema if available for this question
+        if qid in evidence_by_qid:
+            entry["schema_text"] = evidence_by_qid[qid]["schema_text"]
+            enriched_count += 1
+        merged[qid] = entry
+
+    # Add questions from evidence file that are NOT in bird_dev (new questions)
+    new_from_evidence = 0
+    for val in evidence_raw.values():
+        qid = val["question_id"]
+        if qid not in merged and val["db_id"] in INCLUDE_DBS:
+            merged[qid] = dict(val)
+            new_from_evidence += 1
+
+    print(f"  Bird-dev entries (5 DBs): {len(merged) - new_from_evidence}")
+    print(f"  Enriched with evidence schema: {enriched_count}")
+    print(f"  New from evidence file: {new_from_evidence}")
+
+    return list(merged.values())
 
 
 def select_tasks(entries: list[dict]) -> list[dict]:
-    """Select 50 tasks per difficulty, spread proportionally across DBs."""
+    """Select tasks per difficulty, spread proportionally across DBs."""
     # Group by (difficulty, db_id)
     groups: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
     for e in entries:
@@ -57,7 +99,11 @@ def select_tasks(entries: list[dict]) -> list[dict]:
             db_pools[db_id].sort(key=lambda x: x["question_id"])
 
         total_available = sum(len(pool) for pool in db_pools.values())
-        target = TARGET_PER_DIFFICULTY
+        target = TARGETS[diff]
+
+        if total_available < target:
+            print(f"  WARNING: Only {total_available} available for {diff} (need {target}), using all")
+            target = total_available
 
         # Allocate proportionally, ensuring at least 1 per DB if available
         db_ids = sorted(db_pools.keys())
@@ -82,7 +128,6 @@ def select_tasks(entries: list[dict]) -> list[dict]:
         # If we over-allocated (rounding), trim from largest pools
         total_alloc = sum(allocation.values())
         while total_alloc > target:
-            # Find DB with most excess
             for db_id in sorted(db_ids, key=lambda d: allocation[d], reverse=True):
                 if allocation[db_id] > 1:
                     allocation[db_id] -= 1
@@ -144,18 +189,19 @@ def build_outputs(selected: list[dict]) -> tuple[dict, dict]:
 
 
 def main():
-    print(f"Loading entries from {LINKING_FILE}")
-    entries = load_entries()
-    print(f"  Total entries (5 DBs): {len(entries)}")
+    print("Loading and merging entries from bird_dev + mini_dev_evidence...")
+    entries = load_and_merge()
+    print(f"  Total merged entries (5 DBs): {len(entries)}")
 
     # Print pool stats
-    from collections import Counter
     diff_counts = Counter(e["difficulty"] for e in entries)
     db_counts = Counter(e["db_id"] for e in entries)
     print(f"  By difficulty: {dict(diff_counts)}")
     print(f"  By database: {dict(db_counts)}")
 
-    print(f"\nSelecting {TARGET_PER_DIFFICULTY * len(DIFFICULTIES)} tasks ({TARGET_PER_DIFFICULTY} per difficulty)...")
+    total_target = sum(TARGETS.values())
+    target_str = ", ".join(f"{TARGETS[d]} {d}" for d in DIFFICULTIES)
+    print(f"\nSelecting {total_target} tasks ({target_str})...")
     selected = select_tasks(entries)
 
     # Print selection stats
@@ -178,7 +224,8 @@ def main():
     print(f"Wrote {len(schema_linking)} entries to {linking_file}")
 
     # Verify
-    assert len(tasks) == TARGET_PER_DIFFICULTY * len(DIFFICULTIES), f"Expected {TARGET_PER_DIFFICULTY * len(DIFFICULTIES)} tasks, got {len(tasks)}"
+    expected = sum(min(TARGETS[d], sel_diff.get(d, 0)) for d in DIFFICULTIES)
+    assert len(tasks) == expected, f"Expected {expected} tasks, got {len(tasks)}"
     assert len(schema_linking) == len(tasks), "Task count mismatch"
     for tid in tasks:
         assert tid in schema_linking, f"Missing schema linking for {tid}"
