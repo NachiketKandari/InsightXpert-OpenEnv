@@ -18,3 +18,14 @@ app = create_app(
     BirdSQLObservation,
     env_name="bird-text2sql-env",
 )
+
+
+def main():
+    """Entry point for running the server directly."""
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+
+if __name__ == "__main__":
+    main()

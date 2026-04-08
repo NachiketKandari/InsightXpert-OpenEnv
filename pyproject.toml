@@ -15,6 +15,15 @@ dependencies = [
 inference = [
     "openai>=1.0.0",
 ]
+dev = [
+    "sqlglot>=20.0.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.setuptools.packages.find]
+include = ["server*", "schema_linking*"]
 
 [build-system]
 requires = ["setuptools>=68.0"]

@@ -161,9 +161,9 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             reward = 0.00
             feedback = "Only SELECT queries are allowed"
             agent_error = "Forbidden SQL statement"
-        elif not sql.upper().startswith("SELECT"):
+        elif not sql.upper().startswith(("SELECT", "WITH")):
             reward = 0.00
-            feedback = "Query must start with SELECT"
+            feedback = "Query must start with SELECT or WITH (CTE)"
             agent_error = "Not a SELECT query"
         else:
             # Execute agent SQL

@@ -182,7 +182,7 @@ Requires: `pip install sqlglot pydantic`
 
 ## Safety
 
-- Only SELECT queries are allowed (INSERT/UPDATE/DELETE/DROP/ALTER/CREATE rejected)
+- Only SELECT and WITH (CTE) queries are allowed (INSERT/UPDATE/DELETE/DROP/ALTER/CREATE rejected)
 - Each episode loads a fresh in-memory copy of the database (no state leakage)
 - SQL execution has a 5-second timeout
 - Maximum 5 steps per episode
