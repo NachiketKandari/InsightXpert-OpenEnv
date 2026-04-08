@@ -1,0 +1,137 @@
+{
+  "simple_1": {
+    "question_id": 1484,
+    "task_id": "simple_1",
+    "db_id": "debit_card_specializing",
+    "question": "How many more \"discount\" gas stations does the Czech Republic have compared to Slovakia?",
+    "evidence": "Czech Republic can be represented as the Country value in gasstations table is 'CZE'; Slovakia can be represented as the Country value in the gasstations table is 'SVK';  Computation of more \"discount\" gas stations= Total no. of discount gas stations in Czech Republic - Total no. of discount gas stations in Slovakia",
+    "SQL": "SELECT SUM(IIF(Country = 'CZE', 1, 0)) - SUM(IIF(Country = 'SVK', 1, 0)) FROM gasstations WHERE Segment = 'Discount'",
+    "difficulty": "simple"
+  },
+  "simple_2": {
+    "question_id": 195,
+    "task_id": "simple_2",
+    "db_id": "toxicology",
+    "question": "What is the most common bond type?",
+    "evidence": "most common bond type refers MAX(COUNT(bond_type))",
+    "SQL": "SELECT T.bond_type FROM ( SELECT bond_type, COUNT(bond_id) FROM bond GROUP BY bond_type ORDER BY COUNT(bond_id) DESC LIMIT 1 ) AS T",
+    "difficulty": "simple"
+  },
+  "simple_3": {
+    "question_id": 850,
+    "task_id": "simple_3",
+    "db_id": "formula_1",
+    "question": "Please give the name of the race held on the circuits in Germany.",
+    "evidence": "Germany is a name of country;",
+    "SQL": "SELECT DISTINCT T2.name FROM circuits AS T1 INNER JOIN races AS T2 ON T2.circuitID = T1.circuitId WHERE T1.country = 'Germany'",
+    "difficulty": "simple"
+  },
+  "simple_4": {
+    "question_id": 0,
+    "task_id": "simple_4",
+    "db_id": "california_schools",
+    "question": "What is the highest eligible free rate for K-12 students in the schools in Alameda County?",
+    "evidence": "Eligible free rate for K-12 = `Free Meal Count (K-12)` / `Enrollment (K-12)`",
+    "SQL": "SELECT `Free Meal Count (K-12)` / `Enrollment (K-12)` FROM frpm WHERE `County Name` = 'Alameda' ORDER BY (CAST(`Free Meal Count (K-12)` AS REAL) / `Enrollment (K-12)`) DESC LIMIT 1",
+    "difficulty": "simple"
+  },
+  "simple_5": {
+    "question_id": 90,
+    "task_id": "simple_5",
+    "db_id": "financial",
+    "question": "How many accounts who have region in Prague are eligible for loans?",
+    "evidence": "A3 contains the data of region",
+    "SQL": "SELECT COUNT(T1.account_id) FROM account AS T1 INNER JOIN loan AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T1.district_id = T3.district_id WHERE T3.A3 = 'Prague'",
+    "difficulty": "simple"
+  },
+  "moderate_1": {
+    "question_id": 1091,
+    "task_id": "moderate_1",
+    "db_id": "european_football_2",
+    "question": "How many matches were held in the Belgium Jupiler League in April, 2009?",
+    "evidence": "Belgium Jupiler League refers to League.name = 'Belgium Jupiler League'; in April, 2009 refers to SUBSTR(`date`, 1, 7);",
+    "SQL": "SELECT COUNT(t2.id) FROM League AS t1 INNER JOIN Match AS t2 ON t1.id = t2.league_id WHERE t1.name = 'Belgium Jupiler League' AND SUBSTR(t2.`date`, 1, 7) = '2009-04'",
+    "difficulty": "moderate"
+  },
+  "moderate_2": {
+    "question_id": 197,
+    "task_id": "moderate_2",
+    "db_id": "toxicology",
+    "question": "Calculate the average number of oxygen atoms in single-bonded molecules.",
+    "evidence": "single-bonded molecules refers to bond_type = '-' ; average number of oxygen atom = AVG(element = 'o')",
+    "SQL": "SELECT AVG(oxygen_count) FROM (SELECT T1.molecule_id, COUNT(T1.element) AS oxygen_count FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id  WHERE T2.bond_type = '-' AND T1.element = 'o'  GROUP BY T1.molecule_id) AS oxygen_counts",
+    "difficulty": "moderate"
+  },
+  "moderate_3": {
+    "question_id": 862,
+    "task_id": "moderate_3",
+    "db_id": "formula_1",
+    "question": "For the Bahrain Grand Prix in 2007, how many drivers not finished the game?",
+    "evidence": "Bahrain Grand Prix refers to races.name = 'Bahrain Grand Prix'; drivers who finished the race refers to time is not empty (i.e. time IS NOT NULL);",
+    "SQL": "SELECT COUNT(T3.driverId) FROM races AS T1 INNER JOIN results AS T2 ON T2.raceId = T1.raceId INNER JOIN drivers AS T3 ON T3.driverId = T2.driverId WHERE T1.year = 2007 AND T1.name = 'Bahrain Grand Prix' AND T2.time IS NULL",
+    "difficulty": "moderate"
+  },
+  "moderate_4": {
+    "question_id": 24,
+    "task_id": "moderate_4",
+    "db_id": "california_schools",
+    "question": "Give the names of the schools with the percent eligible for free meals in K-12 is more than 0.1 and test takers whose test score is greater than or equal to 1500?",
+    "evidence": "Percent eligible for free meals = Free Meal Count (K-12) / Total (Enrollment (K-12)",
+    "SQL": "SELECT T2.`School Name` FROM satscores AS T1 INNER JOIN frpm AS T2 ON T1.cds = T2.CDSCode WHERE CAST(T2.`Free Meal Count (K-12)` AS REAL) / T2.`Enrollment (K-12)` > 0.1 AND T1.NumGE1500 > 0",
+    "difficulty": "moderate"
+  },
+  "moderate_5": {
+    "question_id": 93,
+    "task_id": "moderate_5",
+    "db_id": "financial",
+    "question": "How many male customers who are living in North Bohemia have average salary greater than 8000?",
+    "evidence": "Male means that gender = 'M'; A3 refers to region; A11 pertains to average salary.",
+    "SQL": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'M' AND T2.A3 = 'north Bohemia' AND T2.A11 > 8000",
+    "difficulty": "moderate"
+  },
+  "challenging_1": {
+    "question_id": 1037,
+    "task_id": "challenging_1",
+    "db_id": "european_football_2",
+    "question": "Calculate the percentage of players who prefer left foot, who were born between 1987 and 1992.",
+    "evidence": "players who prefer left foot refers to preferred_foot = 'left'; percentage of players who prefer left foot = DIVIDE(MULTIPLY((SUM(preferred_foot = 'left'), 100)), COUNT(player_fifa_api_id)); born between 1987 and 1992 refers to YEAR(birthday) BETWEEN '1987' AND '1992';",
+    "SQL": "SELECT CAST(COUNT(CASE WHEN t2.preferred_foot = 'left' THEN t1.id ELSE NULL END) AS REAL) * 100 / COUNT(t1.id) percent FROM Player AS t1 INNER JOIN Player_Attributes AS t2 ON t1.player_api_id = t2.player_api_id WHERE SUBSTR(t1.birthday, 1, 4) BETWEEN '1987' AND '1992'",
+    "difficulty": "challenging"
+  },
+  "challenging_2": {
+    "question_id": 212,
+    "task_id": "challenging_2",
+    "db_id": "toxicology",
+    "question": "Which element is the least numerous in non-carcinogenic molecules?",
+    "evidence": "label = '-' means molecules are non-carcinogenic; least numerous refers to MIN(COUNT(element));",
+    "SQL": "SELECT T.element FROM (SELECT T1.element, COUNT(DISTINCT T1.molecule_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(DISTINCT T1.molecule_id) ASC LIMIT 1) t",
+    "difficulty": "challenging"
+  },
+  "challenging_3": {
+    "question_id": 954,
+    "task_id": "challenging_3",
+    "db_id": "formula_1",
+    "question": "Please calculate the race completion percentage of Japanese drivers from 2007 to 2009.",
+    "evidence": "from 2007 to 2009 refers to year between 2007 and 2009; race completion refers to time is not null; percentage = Divide(COUNT(DriverID where time is not null and year between 2007 and 2009),Count (DriverID where year between 2007 and 2009))*100; ",
+    "SQL": "SELECT CAST(SUM(IIF(T1.time IS NOT NULL, 1, 0)) AS REAL) * 100 / COUNT(T1.raceId) FROM results AS T1 INNER JOIN races AS T2 on T1.raceId = T2.raceId INNER JOIN drivers AS T3 on T1.driverId = T3.driverId WHERE T3.nationality = 'Japanese' AND T2.year BETWEEN 2007 AND 2009",
+    "difficulty": "challenging"
+  },
+  "challenging_4": {
+    "question_id": 62,
+    "task_id": "challenging_4",
+    "db_id": "california_schools",
+    "question": "What is the total number of non-chartered schools in the county of Los Angeles with a percent (%) of eligible free meals for grades 1 through 12 that is less than 0.18%?",
+    "evidence": "non-chartered schools refer to schools whose Charter = 0; K-12 means grades 1 through 12; percent of eligible free rate for K-12 = `Free Meal Count (K-12)` * 100 / `Enrollment (K-12)`",
+    "SQL": "SELECT COUNT(T2.School) FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.County = 'Los Angeles' AND T2.Charter = 0 AND CAST(T1.`Free Meal Count (K-12)` AS REAL) * 100 / T1.`Enrollment (K-12)` < 0.18",
+    "difficulty": "challenging"
+  },
+  "challenging_5": {
+    "question_id": 115,
+    "task_id": "challenging_5",
+    "db_id": "financial",
+    "question": "For the branch which located in the south Bohemia with biggest number of inhabitants, what is the percentage of the male clients?",
+    "evidence": "Percentage of the male clients = DIVIDE(COUNT(male clients), COUNT(clients)) * 100; Male refers to gender = 'M', A3 is the region name. A4 contains the information about inhabitants.",
+    "SQL": "SELECT CAST(SUM(T1.gender = 'M') AS REAL) * 100 / COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A3 = 'south Bohemia' GROUP BY T2.A4 ORDER BY T2.A4 DESC LIMIT 1",
+    "difficulty": "challenging"
+  }
+}
