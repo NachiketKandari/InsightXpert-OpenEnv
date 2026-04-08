@@ -190,7 +190,7 @@ def main() -> None:
                 error_msg = (tb_lines[-1] if tb_lines else "Unknown error")[:200]
                 emit_start(task_id)
                 emit_step(1, "ERROR", 0.00, True, error_msg)
-                emit_end(False, 0, [0.00])
+                emit_end(False, 1, [0.00])
 
 
 if __name__ == "__main__":

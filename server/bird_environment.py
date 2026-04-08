@@ -30,7 +30,7 @@ _DB_DIR = _DATA_DIR / "databases"
 
 _MAX_STEPS = 5
 _SQL_TIMEOUT_SECONDS = 5
-_SAMPLE_ROWS_LIMIT = 3
+
 
 # Only allow SELECT queries
 _FORBIDDEN_PATTERN = re.compile(
@@ -292,35 +292,6 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
         except sqlite3.Error as e:
             self._db.set_progress_handler(None, 0)
             return None, str(e), []
-
-    def _get_sample_rows(self, limit: int = 3) -> str:
-        """Get sample rows from each table."""
-        if self._db is None:
-            return ""
-        cursor = self._db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        )
-        tables = [row[0] for row in cursor.fetchall()]
-
-        parts: list[str] = []
-        for table in tables:
-            try:
-                cur = self._db.execute(f'SELECT * FROM "{table}" LIMIT {limit}')
-                cols = [desc[0] for desc in cur.description]
-                rows = cur.fetchall()
-                if rows:
-                    header = " | ".join(cols)
-                    sep = "-" * len(header)
-                    row_strs = [
-                        " | ".join(str(v) for v in row) for row in rows
-                    ]
-                    parts.append(
-                        f"-- {table}\n{header}\n{sep}\n" + "\n".join(row_strs)
-                    )
-            except sqlite3.Error:
-                continue
-
-        return "\n\n".join(parts)
 
     def close(self) -> None:
         """Clean up database connection."""
