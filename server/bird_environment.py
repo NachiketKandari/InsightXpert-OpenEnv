@@ -191,7 +191,7 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
                 )
 
         self._accumulated_reward += reward
-        done = (reward == 1.0) or (self._step_count >= _MAX_STEPS)
+        done = (reward >= 0.9999) or (self._step_count >= _MAX_STEPS)
         self._done = done
 
         # Build execution result string for the observation

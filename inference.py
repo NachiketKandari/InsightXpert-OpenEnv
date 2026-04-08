@@ -22,7 +22,7 @@ from models import BirdSQLAction
 # ── configuration ────────────────────────────────────────────────────────────
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3.5-9B")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
@@ -64,7 +64,7 @@ def emit_step(
     done_s = str(done).lower()
     err_s = error[:200] if error else "null"
     print(
-        f"[STEP] step={step} action={action!r} "
+        f"[STEP] step={step} action={action} "
         f"reward={reward:.2f} done={done_s} error={err_s}",
         flush=True,
     )
@@ -152,8 +152,8 @@ def run_task(env: Any, client: OpenAI, task_id: str) -> None:
             sql = extract_sql(response.choices[0].message.content or "")
         except Exception as exc:
             error = str(exc)[:200]
-            emit_step(step_num, "ERROR", 0.00, False, error)
-            continue
+            emit_step(step_num, "ERROR", 0.00, True, error)
+            break
 
         result = env.step(BirdSQLAction(sql_query=sql))
         obs = result.observation
@@ -171,7 +171,7 @@ def run_task(env: Any, client: OpenAI, task_id: str) -> None:
         prev_sql = sql
         prev_feedback = obs.feedback
 
-    success = any(r >= 0.99 for r in rewards)
+    success = any(r >= 1.0 for r in rewards)
     emit_end(success, len(rewards), rewards)
 
 
@@ -186,7 +186,8 @@ def main() -> None:
             try:
                 run_task(env, client, task_id)
             except Exception:
-                error_msg = traceback.format_exc().splitlines()[-1][:200]
+                tb_lines = traceback.format_exc().splitlines()
+                error_msg = (tb_lines[-1] if tb_lines else "Unknown error")[:200]
                 emit_start(task_id)
                 emit_step(1, "ERROR", 0.00, True, error_msg)
                 emit_end(False, 0, [0.00])

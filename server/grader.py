@@ -264,8 +264,8 @@ def compute_reward(
         tp = sum(match_scores)
         fp = sum(pred_only_total)
         fn = sum(truth_only_total)
-        prec = int(tp / (tp + fp) * 100) if (tp + fp) > 0 else 0
-        rec = int(tp / (tp + fn) * 100) if (tp + fn) > 0 else 0
+        prec = round(tp / (tp + fp) * 100) if (tp + fp) > 0 else 0
+        rec = round(tp / (tp + fn) * 100) if (tp + fn) > 0 else 0
 
         return value_reward, (
             f"Partial match: {prec}% of your rows are correct, "
