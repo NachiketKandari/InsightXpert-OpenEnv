@@ -118,13 +118,21 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             task["db_id"],
         )
 
+        schema_text = self._schema_linking.get(task_id, "")
+        if schema_text:
+            schema_text = (
+                f"Database: {task['db_id']} (SQLite)\n"
+                f"Write a SQLite-compatible SELECT query.\n\n"
+                + schema_text
+            )
+
         return BirdSQLObservation(
             task_id=task_id,
             db_id=task["db_id"],
             difficulty=task["difficulty"],
             question=task["question"],
             evidence=task.get("evidence", ""),
-            schema_linking=self._schema_linking.get(task_id, ""),
+            schema_linking=schema_text,
             sample_rows="",
             reward=0.0,
             done=False,
