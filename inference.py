@@ -46,11 +46,11 @@ Rules:
 
 def build_prompt(obs, prev_sql: str = "", prev_feedback: str = "") -> list[dict]:
     """Build chat messages for the LLM."""
-    user_parts = [
-        f"DATABASE SCHEMA:\n{obs.schema_ddl}",
-    ]
+    user_parts = []
     if obs.schema_linking:
-        user_parts.append(f"RELEVANT TABLES AND COLUMNS:\n{obs.schema_linking}")
+        user_parts.append(f"DATABASE SCHEMA:\n{obs.schema_linking}")
+    else:
+        user_parts.append(f"DATABASE SCHEMA:\n{obs.schema_ddl}")
     if obs.sample_rows:
         user_parts.append(f"SAMPLE DATA:\n{obs.sample_rows}")
     if obs.evidence:
