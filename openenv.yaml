@@ -1,5 +1,5 @@
 spec_version: 1
-name: bird-text2sql-env
+name: InsightXpert-OpenEnv
 type: space
 runtime: fastapi
 app: server.app:app

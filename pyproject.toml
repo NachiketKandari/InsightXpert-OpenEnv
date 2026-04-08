@@ -1,7 +1,7 @@
 [project]
-name = "bird-text2sql-env"
+name = "InsightXpert-OpenEnv"
 version = "0.1.0"
-description = "BIRD Text-to-SQL OpenEnv environment for the Meta OpenEnv Challenge"
+description = "An OpenEnv RL environment for Text-to-SQL on the BIRD benchmark, from InsightXpert"
 requires-python = ">=3.10"
 dependencies = [
     "openenv-core>=0.2.1",

@@ -1,5 +1,5 @@
 ---
-title: BIRD Text-to-SQL OpenEnv
+title: InsightXpert-OpenEnv
 emoji: 🐦
 colorFrom: blue
 colorTo: green

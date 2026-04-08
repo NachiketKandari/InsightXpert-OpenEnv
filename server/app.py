@@ -16,7 +16,7 @@ app = create_app(
     BirdEnvironment,
     BirdSQLAction,
     BirdSQLObservation,
-    env_name="bird-text2sql-env",
+    env_name="InsightXpert-OpenEnv",
 )
 
 
