@@ -1,3 +1,12 @@
+---
+title: BIRD Text-to-SQL OpenEnv
+emoji: 🐦
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # BIRD Text-to-SQL OpenEnv Environment
 
 > **From [InsightXpert](https://github.com/NachiketKandari/InsightXpert)** — Text-to-SQL has been a core focus of my work, from building [InsightXpert](https://github.com/NachiketKandari/InsightXpert) (3rd Place at InsightX Challenge, IIT Bombay) to ongoing [research](https://github.com/NachiketKandari/InsightXpert-Research) on chat-driven database interfaces. OpenEnv gives me the opportunity to take this further — by framing Text-to-SQL as an RL environment, we can train models that iteratively refine their SQL generation through graded feedback rather than static supervision.
