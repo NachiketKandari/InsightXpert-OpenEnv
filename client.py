@@ -7,7 +7,10 @@ from typing import Any
 from openenv.core.env_client import EnvClient
 from openenv.core.client_types import StepResult
 
-from .models import BirdSQLAction, BirdSQLObservation, BirdSQLState
+try:
+    from .models import BirdSQLAction, BirdSQLObservation, BirdSQLState
+except ImportError:
+    from models import BirdSQLAction, BirdSQLObservation, BirdSQLState
 
 
 class BirdText2SQLEnv(EnvClient[BirdSQLAction, BirdSQLObservation, BirdSQLState]):
@@ -17,11 +20,12 @@ class BirdText2SQLEnv(EnvClient[BirdSQLAction, BirdSQLObservation, BirdSQLState]
         return action.model_dump()
 
     def _parse_result(self, payload: dict[str, Any]) -> StepResult[BirdSQLObservation]:
-        obs = BirdSQLObservation(**payload.get("observation", payload))
+        obs_data = payload.get("observation", payload)
+        obs = BirdSQLObservation(**obs_data)
         return StepResult(
             observation=obs,
-            reward=obs.reward,
-            done=obs.done,
+            reward=payload.get("reward", obs.reward),
+            done=payload.get("done", obs.done),
         )
 
     def _parse_state(self, payload: dict[str, Any]) -> BirdSQLState:

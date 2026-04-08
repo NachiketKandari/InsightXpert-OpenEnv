@@ -1,9 +1,16 @@
 """FastAPI application for the BIRD Text-to-SQL OpenEnv environment."""
 
-from openenv.core.env_server.http_server import create_app
+from openenv.core.env_server import create_app
 
-from ..models import BirdSQLAction, BirdSQLObservation
-from .bird_environment import BirdEnvironment
+try:
+    from ..models import BirdSQLAction, BirdSQLObservation
+except ImportError:
+    from models import BirdSQLAction, BirdSQLObservation
+
+try:
+    from .bird_environment import BirdEnvironment
+except ImportError:
+    from server.bird_environment import BirdEnvironment
 
 app = create_app(
     BirdEnvironment,

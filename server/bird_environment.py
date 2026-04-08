@@ -13,7 +13,10 @@ from uuid import uuid4
 
 from openenv.core.env_server import Environment
 
-from ..models import BirdSQLAction, BirdSQLObservation, BirdSQLState
+try:
+    from ..models import BirdSQLAction, BirdSQLObservation, BirdSQLState
+except ImportError:
+    from models import BirdSQLAction, BirdSQLObservation, BirdSQLState
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 _PACKAGE_DIR = Path(__file__).resolve().parent.parent
 _DATA_DIR = _PACKAGE_DIR / "data"
 _TASKS_FILE = _DATA_DIR / "tasks.json"
+_SCHEMA_LINKING_FILE = _DATA_DIR / "schema_linking.json"
 _DB_DIR = _DATA_DIR / "databases"
 
 _MAX_STEPS = 5
@@ -43,6 +47,16 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
         super().__init__(**kwargs)
         with open(_TASKS_FILE) as f:
             self.task_registry: dict[str, dict] = json.load(f)
+        with open(_SCHEMA_LINKING_FILE) as f:
+            raw_linking: dict = json.load(f)
+        # Extract schema_text string from each entry (supports both old
+        # string-value format and new dict-value format with schema_text key)
+        self._schema_linking: dict[str, str] = {}
+        for tid, val in raw_linking.items():
+            if isinstance(val, dict):
+                self._schema_linking[tid] = val.get("schema_text", "")
+            else:
+                self._schema_linking[tid] = str(val)
 
         self._db: sqlite3.Connection | None = None
         self._current_task: dict | None = None
@@ -80,9 +94,11 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             self._db.close()
 
         # Load fresh in-memory copy of the database
+        # check_same_thread=False is needed because the async server
+        # runs reset/step in a thread pool but close() from the main thread.
         db_path = _DB_DIR / task["db_id"] / f"{task['db_id']}.sqlite"
         source = sqlite3.connect(str(db_path))
-        self._db = sqlite3.connect(":memory:")
+        self._db = sqlite3.connect(":memory:", check_same_thread=False)
         source.backup(self._db)
         source.close()
 
@@ -112,6 +128,7 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             question=task["question"],
             evidence=task.get("evidence", ""),
             schema_ddl=schema_ddl,
+            schema_linking=self._schema_linking.get(task_id, ""),
             sample_rows=sample_rows,
             reward=0.0,
             done=False,
@@ -160,7 +177,10 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
                 reward = 0.0
                 feedback = f"Internal error: gold SQL failed ({gold_error})"
             else:
-                from .grader import compute_reward
+                try:
+                    from .grader import compute_reward
+                except ImportError:
+                    from server.grader import compute_reward
 
                 reward, feedback = compute_reward(
                     gold_results,
@@ -207,6 +227,7 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             question=task["question"],
             evidence=task.get("evidence", ""),
             schema_ddl=self._get_schema_ddl(),
+            schema_linking=self._schema_linking.get(task_id, ""),
             sample_rows="",  # Don't resend sample rows on step
             execution_result=exec_result,
             execution_success=exec_success,

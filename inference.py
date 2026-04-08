@@ -16,9 +16,9 @@ from models import BirdSQLAction
 # --- Mandatory env vars ---
 API_BASE_URL = os.getenv(
     "API_BASE_URL",
-    "https://generativelanguage.googleapis.com/v1beta/openai",
+    "https://router.huggingface.co/v1",
 )
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.0-flash")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "")
 
 BENCHMARK = "bird-text2sql"
@@ -49,6 +49,8 @@ def build_prompt(obs, prev_sql: str = "", prev_feedback: str = "") -> list[dict]
     user_parts = [
         f"DATABASE SCHEMA:\n{obs.schema_ddl}",
     ]
+    if obs.schema_linking:
+        user_parts.append(f"RELEVANT TABLES AND COLUMNS:\n{obs.schema_linking}")
     if obs.sample_rows:
         user_parts.append(f"SAMPLE DATA:\n{obs.sample_rows}")
     if obs.evidence:
@@ -80,7 +82,8 @@ def extract_sql(text: str) -> str:
 
 def run_task(env, task_id: str) -> None:
     """Run a single task episode."""
-    obs = env.reset(task_id=task_id)
+    result = env.reset(task_id=task_id)
+    obs = result.observation
     print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}")
 
     rewards: list[float] = []
@@ -97,17 +100,20 @@ def run_task(env, task_id: str) -> None:
         )
         sql = extract_sql(response.choices[0].message.content or "")
 
-        obs = env.step(BirdSQLAction(sql_query=sql))
-        rewards.append(obs.reward)
+        result = env.step(BirdSQLAction(sql_query=sql))
+        obs = result.observation
+        reward = result.reward or 0.0
+        done = result.done
+        rewards.append(reward)
 
         error_str = obs.feedback if not obs.execution_success else "null"
         print(
             f"[STEP] step={step_num} action={sql!r} "
-            f"reward={obs.reward:.2f} done={str(obs.done).lower()} "
+            f"reward={reward:.2f} done={str(done).lower()} "
             f"error={error_str}"
         )
 
-        if obs.done:
+        if done:
             break
 
         # Save for self-correction on next step

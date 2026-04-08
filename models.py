@@ -22,6 +22,7 @@ class BirdSQLObservation(Observation):
     question: str = Field(..., description="Natural language question")
     evidence: str = Field("", description="External knowledge hint")
     schema_ddl: str = Field(..., description="CREATE TABLE statements")
+    schema_linking: str = Field("", description="Relevant tables and columns for this question")
     sample_rows: str = Field("", description="Sample data rows per table")
 
     # Step result (populated after step(), empty after reset())
