@@ -40,7 +40,7 @@ python3 -m schema_linking.build_linking --profiles-dir /path/to/insightxpert/pro
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `API_BASE_URL` | `https://router.huggingface.co/v1` | HF router LLM endpoint |
-| `MODEL_NAME` | `Qwen/Qwen2.5-72B-Instruct` | LLM model (must be on HuggingFace) |
+| `MODEL_NAME` | `Qwen/Qwen3-8B` | LLM model (must be on HuggingFace) |
 | `HF_TOKEN` | Required (no default) | HuggingFace API token |
 | `ENV_URL` | `http://localhost:7860` | Environment server URL |
 

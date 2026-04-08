@@ -104,7 +104,7 @@ docker run -p 7860:7860 bird-text2sql-env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `API_BASE_URL` | `https://router.huggingface.co/v1` | LLM API endpoint (OpenAI-compatible) |
-| `MODEL_NAME` | `Qwen/Qwen2.5-72B-Instruct` | Model to use for inference |
+| `MODEL_NAME` | `Qwen/Qwen3-8B` | Model to use for inference |
 | `HF_TOKEN` / `API_KEY` | - | HuggingFace API token |
 | `ENV_URL` | `http://localhost:7860` | Environment server URL |
 
