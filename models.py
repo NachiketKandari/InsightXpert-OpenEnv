@@ -9,7 +9,7 @@ from openenv.core.env_server.types import Action, Observation, State
 class BirdSQLAction(Action):
     """Agent submits a SQL query."""
 
-    sql_query: str = Field(..., description="The SQL query to execute")
+    sql_query: str = Field("", description="The SQL query to execute")
 
 
 class BirdSQLObservation(Observation):

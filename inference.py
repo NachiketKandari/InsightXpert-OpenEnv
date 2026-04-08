@@ -25,8 +25,8 @@ BENCHMARK = "bird-text2sql"
 MAX_STEPS = 5
 TASKS = [
     "simple_1", "simple_2", "simple_3", "simple_4", "simple_5",
-    "moderate_1", "moderate_2", "moderate_3", "moderate_4", "moderate_5",
-    "challenging_1", "challenging_2", "challenging_3", "challenging_4", "challenging_5",
+    "moderate_1", "moderate_2", "moderate_3", "moderate_4", "moderate_5", "moderate_6",
+    "challenging_1", "challenging_2", "challenging_3", "challenging_4",
 ]
 
 client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
@@ -92,13 +92,17 @@ def run_task(env, task_id: str) -> None:
 
     for step_num in range(1, MAX_STEPS + 1):
         messages = build_prompt(obs, prev_sql, prev_feedback)
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=messages,
-            temperature=0.0,
-            max_tokens=500,
-        )
-        sql = extract_sql(response.choices[0].message.content or "")
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                temperature=0.0,
+                max_tokens=500,
+            )
+            sql = extract_sql(response.choices[0].message.content or "")
+        except Exception as e:
+            print(f"[STEP] step={step_num} action='ERROR' reward=0.00 done=false error={e}")
+            continue
 
         result = env.step(BirdSQLAction(sql_query=sql))
         obs = result.observation
@@ -132,7 +136,12 @@ def main() -> None:
     env_url = os.getenv("ENV_URL", "http://localhost:7860")
     with BirdText2SQLEnv(base_url=env_url).sync() as env:
         for task_id in TASKS:
-            run_task(env, task_id)
+            try:
+                run_task(env, task_id)
+            except Exception as e:
+                print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}")
+                print(f"[STEP] step=1 action='ERROR' reward=0.00 done=true error={e}")
+                print(f"[END] success=false steps=0 rewards=0.00")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import logging
 import random
 import re
 import sqlite3
+import time
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -263,11 +264,18 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
         if self._db is None:
             return None, "No database loaded", []
         try:
-            self._db.execute(
-                f"PRAGMA busy_timeout = {_SQL_TIMEOUT_SECONDS * 1000}"
-            )
+            # Enforce real execution timeout via progress handler
+            deadline = time.monotonic() + _SQL_TIMEOUT_SECONDS
+
+            def _check_timeout():
+                if time.monotonic() > deadline:
+                    return 1  # non-zero cancels the query
+                return 0
+
+            self._db.set_progress_handler(_check_timeout, 1000)
             cursor = self._db.execute(sql)
             rows = cursor.fetchall()
+            self._db.set_progress_handler(None, 0)
             cols = (
                 [desc[0] for desc in cursor.description]
                 if cursor.description
@@ -275,8 +283,12 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             )
             return rows, None, cols
         except sqlite3.OperationalError as e:
+            self._db.set_progress_handler(None, 0)
+            if "interrupt" in str(e).lower():
+                return None, f"Query timed out after {_SQL_TIMEOUT_SECONDS}s", []
             return None, str(e), []
         except sqlite3.Error as e:
+            self._db.set_progress_handler(None, 0)
             return None, str(e), []
 
     def _get_schema_ddl(self) -> str:
