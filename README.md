@@ -30,6 +30,7 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 | `question` | `str` | Natural language question |
 | `evidence` | `str` | External knowledge hint |
 | `schema_ddl` | `str` | CREATE TABLE statements |
+| `schema_linking` | `str` | Relevant tables and columns for this question |
 | `sample_rows` | `str` | Sample data rows (3 per table, on reset only) |
 | `execution_result` | `str` | Query output or error message |
 | `execution_success` | `bool` | Did the SQL execute without error? |
@@ -41,32 +42,19 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 
 ## Reward Function
 
-### Tier 0: Syntax/Runtime Error (0.00-0.15)
+Uses BIRD-standard evaluation metrics (EX + Soft-F1):
 
-| Condition | Reward |
-|-----------|--------|
-| Empty / not SELECT | 0.00 |
-| SQL syntax error | 0.05 |
-| Runtime error (bad table/column) | 0.10 |
-| Executes but returns 0 rows | 0.15 |
+| Condition | Reward | Feedback |
+|-----------|--------|----------|
+| Empty / not SELECT | 0.00 | No valid SQL query provided |
+| SQL syntax error | 0.05 | Syntax error details |
+| Runtime error (bad table/column) | 0.10 | Runtime error details |
+| Executes but returns 0 rows | 0.15 | Check WHERE conditions and JOINs |
+| Partial value match (Soft-F1) | 0.20-0.90 | Precision/recall breakdown |
+| Relaxed EX (extra columns) | 0.95 | Simplify SELECT clause |
+| Strict EX (exact match) | 1.00 | Perfect match! |
 
-### Tier 1: Structural Match (0.20-0.40)
-
-| Condition | Reward |
-|-----------|--------|
-| Correct column count | 0.20 |
-| Correct column names | 0.30 |
-| Column names + row count match | 0.40 |
-
-### Tier 2: Partial Value Match (0.40-0.90)
-
-Soft-F1 on result sets: `reward = 0.40 + (F1 * 0.50)`
-
-For single-value numeric results, a closeness gradient is used instead.
-
-### Tier 3: Perfect Match (1.0)
-
-Gold and agent result sets are identical (order-insensitive unless gold has ORDER BY).
+Order-sensitive comparison is used only when the gold SQL contains ORDER BY.
 
 ## Tasks
 
