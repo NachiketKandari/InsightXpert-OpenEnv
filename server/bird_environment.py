@@ -42,7 +42,7 @@ _FORBIDDEN_PATTERN = re.compile(
 class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLState]):
     """OpenEnv environment for BIRD Text-to-SQL benchmark tasks."""
 
-    SUPPORTS_CONCURRENT_SESSIONS = False
+    SUPPORTS_CONCURRENT_SESSIONS = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -103,8 +103,7 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
         source.backup(self._db)
         source.close()
 
-        # Extract schema and sample rows
-        schema_ddl = self._get_schema_ddl()
+        # Extract sample rows
         sample_rows = self._get_sample_rows(_SAMPLE_ROWS_LIMIT)
 
         # Reset episode state
@@ -128,7 +127,6 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             difficulty=task["difficulty"],
             question=task["question"],
             evidence=task.get("evidence", ""),
-            schema_ddl=schema_ddl,
             schema_linking=self._schema_linking.get(task_id, ""),
             sample_rows=sample_rows,
             reward=0.0,
@@ -227,7 +225,6 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             difficulty=task["difficulty"],
             question=task["question"],
             evidence=task.get("evidence", ""),
-            schema_ddl=self._get_schema_ddl(),
             schema_linking=self._schema_linking.get(task_id, ""),
             sample_rows="",  # Don't resend sample rows on step
             execution_result=exec_result,
@@ -290,17 +287,6 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
         except sqlite3.Error as e:
             self._db.set_progress_handler(None, 0)
             return None, str(e), []
-
-    def _get_schema_ddl(self) -> str:
-        """Extract CREATE TABLE statements from the database."""
-        if self._db is None:
-            return ""
-        cursor = self._db.execute(
-            "SELECT sql FROM sqlite_master "
-            "WHERE type='table' AND sql IS NOT NULL ORDER BY name"
-        )
-        statements = [row[0] for row in cursor.fetchall()]
-        return "\n\n".join(statements)
 
     def _get_sample_rows(self, limit: int = 3) -> str:
         """Get sample rows from each table."""

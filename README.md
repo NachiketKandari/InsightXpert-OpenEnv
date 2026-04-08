@@ -38,7 +38,6 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 | `difficulty` | `str` | `simple` / `moderate` / `challenging` |
 | `question` | `str` | Natural language question |
 | `evidence` | `str` | External knowledge hint |
-| `schema_ddl` | `str` | CREATE TABLE statements |
 | `schema_linking` | `str` | Relevant tables and columns for this question |
 | `sample_rows` | `str` | Sample data rows (3 per table, on reset only) |
 | `execution_result` | `str` | Query output or error message |

@@ -21,7 +21,6 @@ class BirdSQLObservation(Observation):
     difficulty: str = Field(..., description="simple|moderate|challenging")
     question: str = Field(..., description="Natural language question")
     evidence: str = Field("", description="External knowledge hint")
-    schema_ddl: str = Field(..., description="CREATE TABLE statements")
     schema_linking: str = Field("", description="Relevant tables and columns for this question")
     sample_rows: str = Field("", description="Sample data rows per table")
 

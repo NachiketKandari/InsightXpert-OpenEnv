@@ -18,18 +18,18 @@ API_BASE_URL = os.getenv(
     "API_BASE_URL",
     "https://router.huggingface.co/v1",
 )
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3.5-9B")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 BENCHMARK = "bird-text2sql"
 MAX_STEPS = 5
-TASKS = [
-    "simple_1", "simple_2", "simple_3", "simple_4", "simple_5",
-    "moderate_1", "moderate_2", "moderate_3", "moderate_4", "moderate_5", "moderate_6",
-    "challenging_1", "challenging_2", "challenging_3", "challenging_4",
-]
 
-client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+# Load task IDs dynamically from tasks.json
+import json as _json
+with open("data/tasks.json") as _f:
+    TASKS = list(_json.load(_f).keys())
+
+client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 SYSTEM_PROMPT = """\
 You are a SQL expert for SQLite databases. Given a database schema, \
@@ -49,8 +49,6 @@ def build_prompt(obs, prev_sql: str = "", prev_feedback: str = "") -> list[dict]
     user_parts = []
     if obs.schema_linking:
         user_parts.append(f"DATABASE SCHEMA:\n{obs.schema_linking}")
-    else:
-        user_parts.append(f"DATABASE SCHEMA:\n{obs.schema_ddl}")
     if obs.sample_rows:
         user_parts.append(f"SAMPLE DATA:\n{obs.sample_rows}")
     if obs.evidence:
