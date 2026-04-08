@@ -17,6 +17,7 @@ app = create_app(
     BirdSQLAction,
     BirdSQLObservation,
     env_name="InsightXpert-OpenEnv",
+    max_concurrent_envs=64,
 )
 
 
