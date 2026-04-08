@@ -267,10 +267,55 @@ def compute_reward(
         prec = round(tp / (tp + fp) * 100) if (tp + fp) > 0 else 0
         rec = round(tp / (tp + fn) * 100) if (tp + fn) > 0 else 0
 
-        return value_reward, (
+        feedback = (
             f"Partial match: {prec}% of your rows are correct, "
             f"you found {rec}% of expected rows. Soft-F1={f1:.2f}"
         )
 
+        col_hints = []
+        if len(gold_columns) != len(agent_columns):
+            col_hints.append(f"Expected {len(gold_columns)} column(s), got {len(agent_columns)}.")
+
+        gold_col_lower = {c.lower() for c in gold_columns}
+        agent_col_lower = {c.lower() for c in agent_columns}
+        extra = agent_col_lower - gold_col_lower
+        if extra and len(extra) <= 3:
+            col_hints.append(f"Extra column(s): {', '.join(sorted(extra))}.")
+
+        if col_hints:
+            feedback += " " + " ".join(col_hints)
+
+        return value_reward, feedback
+
     # F1 = 0 — SQL ran but results have no overlap with gold
-    return 0.20, "Query executed but results don't overlap with the expected answer."
+    hints = []
+
+    # Column count mismatch
+    if len(gold_columns) != len(agent_columns):
+        hints.append(f"Expected {len(gold_columns)} column(s), got {len(agent_columns)}.")
+
+    # Column name comparison (case-insensitive)
+    gold_col_set = {c.lower() for c in gold_columns}
+    agent_col_set = {c.lower() for c in agent_columns}
+    if gold_col_set and agent_col_set and not gold_col_set & agent_col_set:
+        hints.append("None of your column names match the expected output.")
+    elif gold_col_set - agent_col_set:
+        missing = gold_col_set - agent_col_set
+        if len(missing) <= 3:
+            hints.append(f"Missing column(s): {', '.join(sorted(missing))}.")
+
+    # Row count mismatch
+    gold_count = len(gold_results) if gold_results else 0
+    agent_count = len(agent_results) if agent_results else 0
+    if gold_count != agent_count:
+        hints.append(f"Expected {gold_count} row(s), got {agent_count}.")
+
+    # Aggregate detection — gold is single scalar, agent returned a table
+    if gold_count == 1 and len(gold_columns) == 1 and agent_count > 1:
+        hints.append("The expected answer is a single value — consider using COUNT, SUM, or another aggregate.")
+
+    feedback_parts = ["No overlap with expected results."]
+    if hints:
+        feedback_parts.append(" ".join(hints))
+    feedback_parts.append("Revisit which tables and columns you're selecting.")
+    return 0.20, " ".join(feedback_parts)

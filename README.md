@@ -58,7 +58,7 @@ Uses BIRD-standard evaluation metrics (EX + Soft-F1):
 | SQL syntax error | 0.05 | Syntax error details |
 | Runtime error (bad table/column) | 0.10 | Runtime error details |
 | Executes but returns 0 rows | 0.15 | Check WHERE conditions and JOINs |
-| Partial value match (Soft-F1) | 0.20-0.90 | Precision/recall breakdown |
+| Partial value match (Soft-F1) | 0.20-0.90 | Precision/recall breakdown + column hints |
 | Relaxed EX (extra columns) | 0.95 | Simplify SELECT clause |
 | Strict EX (exact match) | 1.00 | Perfect match! |
 
