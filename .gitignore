@@ -5,16 +5,36 @@ __pycache__/
 dist/
 build/
 .venv/
+venv/
+.python-version
 
-# Environment
+# Secrets & environment
 .env
+.env.*
+*.pem
+*.key
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
+Thumbs.db
 
-# Data (large SQLite files excluded from git)
-data/databases/
+# Docker
+*.log
+
+# Data (SQLite files tracked via Git LFS for HF Spaces deployment)
+data/perfect_linking_*.json
+data/profiles/
+
+# Project-specific
+transcript.txt
+PLAN.md
+DESIGN.md
+AUDIT.md
+.agents/
