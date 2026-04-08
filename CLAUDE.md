@@ -52,8 +52,8 @@ The project follows the OpenEnv contract: typed action/observation/state models,
 
 **Key modules:**
 - `models.py` — Pydantic models: `BirdSQLAction` (agent input), `BirdSQLObservation` (env output), `BirdSQLState` (episode metadata). Note: `reward`, `done`, `episode_id`, `step_count` are inherited from OpenEnv base classes, not re-declared here.
-- `server/bird_environment.py` — Core environment: task loading, DB management, SQL execution, schema/sample extraction. Enforces SELECT-only queries, 5-second timeout, 5-step episode limit, fresh in-memory DB per episode.
-- `server/grader.py` — 5-tier reward computation (0.0-1.0): Tier 0 for errors, Tier 1 for structural match, Tier 2 for partial value match via soft-F1, Tier 3 for perfect match. Order-sensitive only when gold SQL has ORDER BY.
+- `server/bird_environment.py` — Core environment: task loading, DB management, SQL execution, schema/sample extraction. Enforces SELECT or WITH (CTE) queries only, 5-second timeout, 5-step episode limit, fresh in-memory DB per episode.
+- `server/grader.py` — 4-tier reward computation (0.0-1.0): error tiers (0.00-0.15), Soft-F1 partial match (0.20-0.90), Relaxed EX (0.95), Strict EX (1.0). Order-sensitive only when gold SQL has ORDER BY.
 - `server/app.py` — FastAPI app factory using `openenv.core.env_server.create_app()`. Exposes `/health`, `/reset`, `/step`, `/state`.
 - `client.py` — `BirdText2SQLEnv` WebSocket client extending `EnvClient`. `env.reset()` and `env.step()` return `StepResult` objects (from `openenv.core.client_types`), not raw observations.
 - `inference.py` — Baseline agent: iterates all 150 tasks (loaded dynamically from tasks.json), calls LLM, self-corrects using feedback from failed steps.
@@ -67,7 +67,7 @@ The project follows the OpenEnv contract: typed action/observation/state models,
 
 ## Key Constraints
 
-- Only SELECT queries are allowed (INSERT/UPDATE/DELETE/DROP/ALTER/CREATE rejected via regex)
+- Only SELECT or WITH (CTE) queries are allowed (INSERT/UPDATE/DELETE/DROP/ALTER/CREATE rejected via regex)
 - Max 5 steps per episode; episode ends early on perfect reward (1.0)
 - SQL execution timeout: 5 seconds
 - Each episode gets a fresh in-memory copy of the database (no cross-episode state leakage)
@@ -79,4 +79,4 @@ The project follows the OpenEnv contract: typed action/observation/state models,
 
 - **Dual import pattern:** All `server/` modules use try/except imports to support both `uvicorn server.app:app` (run from project root) and installed-package mode. This is intentional — do not "fix" it.
 - **`[START]/[STEP]/[END]` stdout format:** `inference.py` emits structured logs in this format as required by the OpenEnv competition spec. Do not alter this format.
-- **`DESIGN.md` / `PLAN.md` / `AUDIT.md`:** Internal planning docs, gitignored but present in the working tree. May contain outdated information (e.g., `DESIGN.md` has a superseded reward formula). Do not treat as authoritative.
+- **`DESIGN.md` / `PLAN.md` / `AUDIT.md`:** Internal planning docs, gitignored. These may or may not exist in the working tree and should not be treated as authoritative.

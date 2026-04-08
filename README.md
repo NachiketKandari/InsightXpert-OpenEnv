@@ -111,37 +111,37 @@ docker run -p 7860:7860 bird-text2sql-env
 ## File Structure
 
 ```
-openenv/
-  __init__.py              # Package exports
-  models.py                # Pydantic: BirdSQLAction, BirdSQLObservation, BirdSQLState
-  client.py                # BirdText2SQLEnv(EnvClient) -- WebSocket client
-  inference.py             # Baseline agent (OpenAI client, stdout logging)
-  openenv.yaml             # Environment manifest
-  pyproject.toml           # Dependencies
-  requirements.txt         # For Docker
-  Dockerfile               # Docker build
-  README.md                # This file
-  data/
-    tasks.json             # Curated task registry (150 tasks)
-    schema_linking.json    # Pre-computed perfect schema linking per task
-    databases/             # BIRD Mini-Dev SQLite files
-      california_schools/
-      debit_card_specializing/
-      financial/
-      formula_1/
-      toxicology/
-  schema_linking/          # Standalone schema linking pipeline (from InsightXpert)
-    models.py              # Pydantic models (schema + profile)
-    db.py                  # SQLite wrapper
-    schema_extractor.py    # Extract schema via PRAGMA
-    stats_collector.py     # Collect column statistics
-    perfect_linker.py      # Parse gold SQL, render pruned schema
-    build_linking.py       # CLI to regenerate schema_linking.json
-  server/
-    __init__.py
-    app.py                 # FastAPI app via create_app()
-    bird_environment.py    # BirdEnvironment(Environment) -- core logic
-    grader.py              # Reward computation (Soft-F1 + execution accuracy)
+__init__.py              # Package exports
+models.py                # Pydantic: BirdSQLAction, BirdSQLObservation, BirdSQLState
+client.py                # BirdText2SQLEnv(EnvClient) -- WebSocket client
+inference.py             # Baseline agent (OpenAI client, stdout logging)
+openenv.yaml             # Environment manifest
+pyproject.toml           # Dependencies
+requirements.txt         # For Docker
+Dockerfile               # Docker build
+README.md                # This file
+data/
+  tasks.json             # Curated task registry (150 tasks)
+  schema_linking.json    # Pre-computed perfect schema linking per task
+  databases/             # BIRD Mini-Dev SQLite files
+    california_schools/
+    debit_card_specializing/
+    financial/
+    formula_1/
+    toxicology/
+schema_linking/          # Standalone schema linking pipeline (from InsightXpert)
+  models.py              # Pydantic models (schema + profile)
+  db.py                  # SQLite wrapper
+  schema_extractor.py    # Extract schema via PRAGMA
+  stats_collector.py     # Collect column statistics
+  perfect_linker.py      # Parse gold SQL, render pruned schema
+  build_linking.py       # CLI to regenerate schema_linking.json
+server/
+  __init__.py
+  app.py                 # FastAPI app via create_app()
+  gradio_app.py          # Custom Gradio UI for BIRD environment
+  bird_environment.py    # BirdEnvironment(Environment) -- core logic
+  grader.py              # Reward computation (Soft-F1 + execution accuracy)
 ```
 
 ## Perfect Schema Linking
