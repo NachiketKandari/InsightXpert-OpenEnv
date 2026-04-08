@@ -12,12 +12,18 @@ try:
 except ImportError:
     from server.bird_environment import BirdEnvironment
 
+try:
+    from .gradio_app import build_custom_gradio_app
+except ImportError:
+    from server.gradio_app import build_custom_gradio_app
+
 app = create_app(
     BirdEnvironment,
     BirdSQLAction,
     BirdSQLObservation,
     env_name="InsightXpert-OpenEnv",
     max_concurrent_envs=64,
+    gradio_builder=build_custom_gradio_app,
 )
 
 

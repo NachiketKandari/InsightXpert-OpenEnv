@@ -15,8 +15,8 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 
 ## Overview
 
-- **15 curated tasks** across 3 difficulty levels (simple, moderate, challenging)
-- **Formula 1 SQLite database** (14 tables, 96 columns) from the BIRD benchmark
+- **150 curated tasks** across 3 difficulty levels (50 simple, 50 moderate, 50 challenging)
+- **5 SQLite databases** (california_schools, debit_card_specializing, financial, formula_1, toxicology) from the BIRD benchmark
 - **Fine-grained partial rewards** (0.0-1.0) via execution accuracy + Soft-F1 scoring
 - **Self-correction loop**: agents get up to 5 attempts per task with grader feedback
 - Lightweight: SQLite in-memory, no GPU required
@@ -66,13 +66,13 @@ Order-sensitive comparison is used only when the gold SQL contains ORDER BY.
 
 ## Tasks
 
-15 tasks on the Formula 1 database (14 tables, 96 columns):
+150 tasks across 5 databases (california_schools, debit_card_specializing, financial, formula_1, toxicology):
 
 | Difficulty | Count | SQL Patterns |
 |------------|-------|-------------|
-| Simple (5) | Basic SELECT, JOIN, WHERE, DISTINCT, COUNT, ORDER BY | 
-| Moderate (6) | Multi-table JOIN, AVG, CASE WHEN, percentage calculations |
-| Challenging (4) | Nested subqueries, CTE, IIF, STRFTIME, complex aggregation |
+| Simple (50) | Basic SELECT, JOIN, WHERE, DISTINCT, COUNT, ORDER BY |
+| Moderate (50) | Multi-table JOIN, AVG, CASE WHEN, percentage calculations |
+| Challenging (50) | Nested subqueries, CTE, IIF, STRFTIME, complex aggregation |
 
 Tasks are selected from [BIRD Mini-Dev](https://huggingface.co/datasets/birdsql/bird_mini_dev) with a mix of difficulty: some are reliably solvable by current models, some are partially solvable, and some remain unsolved — ensuring meaningful reward gradients for RL training.
 
@@ -122,10 +122,14 @@ openenv/
   Dockerfile               # Docker build
   README.md                # This file
   data/
-    tasks.json             # Curated task registry (15 tasks)
+    tasks.json             # Curated task registry (150 tasks)
     schema_linking.json    # Pre-computed perfect schema linking per task
     databases/             # BIRD Mini-Dev SQLite files
+      california_schools/
+      debit_card_specializing/
+      financial/
       formula_1/
+      toxicology/
   schema_linking/          # Standalone schema linking pipeline (from InsightXpert)
     models.py              # Pydantic models (schema + profile)
     db.py                  # SQLite wrapper
