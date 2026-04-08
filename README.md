@@ -6,7 +6,7 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 
 ## Overview
 
-- **3 curated tasks** across 3 difficulty levels (simple, moderate, challenging)
+- **15 curated tasks** across 3 difficulty levels (simple, moderate, challenging)
 - **Formula 1 SQLite database** (14 tables, 96 columns) from the BIRD benchmark
 - **Fine-grained partial rewards** (0.0-1.0) via execution accuracy + Soft-F1 scoring
 - **Self-correction loop**: agents get up to 5 attempts per task with grader feedback
@@ -70,13 +70,15 @@ Gold and agent result sets are identical (order-insensitive unless gold has ORDE
 
 ## Tasks
 
-3 tasks on the Formula 1 database:
+15 tasks on the Formula 1 database (14 tables, 96 columns):
 
-| Difficulty | Task | SQL Patterns |
-|------------|------|-------------|
-| Simple | Races held on circuits in Germany | JOIN, WHERE, DISTINCT |
-| Moderate | Drivers who didn't finish Bahrain GP 2007 | Multi-table JOIN, NULL check, COUNT |
-| Challenging | Race completion % of Japanese drivers 2007-2009 | JOIN, aggregation, CAST, BETWEEN, percentage |
+| Difficulty | Count | SQL Patterns |
+|------------|-------|-------------|
+| Simple (5) | Basic SELECT, JOIN, WHERE, DISTINCT, COUNT, ORDER BY | 
+| Moderate (6) | Multi-table JOIN, AVG, CASE WHEN, percentage calculations |
+| Challenging (4) | Nested subqueries, CTE, IIF, STRFTIME, complex aggregation |
+
+Tasks are selected from [BIRD Mini-Dev](https://huggingface.co/datasets/birdsql/bird_mini_dev) with a mix of difficulty: some are reliably solvable by current models, some are partially solvable, and some remain unsolved — ensuring meaningful reward gradients for RL training.
 
 ## Setup
 
