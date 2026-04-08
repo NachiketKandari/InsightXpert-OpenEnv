@@ -1,58 +1,102 @@
-"""
-BIRD Text-to-SQL Inference Script
-Uses OpenAI-compatible client for LLM calls.
-Emits [START]/[STEP]/[END] stdout logs per OpenEnv competition spec.
+"""BIRD Text-to-SQL Inference Script.
+
+Runs an LLM agent against the InsightXpert-OpenEnv environment, emitting
+validator-exact [START]/[STEP]/[END] stdout lines per OpenEnv competition spec.
+The agent generates SQL from natural language questions and self-corrects
+using grader feedback across up to MAX_STEPS attempts per task.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import textwrap
+import traceback
+from typing import Any
 
 from openai import OpenAI
 
 from client import BirdText2SQLEnv
 from models import BirdSQLAction
 
-# --- Mandatory env vars ---
-API_BASE_URL = os.getenv(
-    "API_BASE_URL",
-    "https://router.huggingface.co/v1",
-)
+# ── configuration ────────────────────────────────────────────────────────────
+
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3.5-9B")
-HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY", "")
+ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
 BENCHMARK = "bird-text2sql"
 MAX_STEPS = 5
 
-# Load task IDs dynamically from tasks.json
-import json as _json
 with open("data/tasks.json") as _f:
-    TASKS = list(_json.load(_f).keys())
+    TASKS: list[str] = list(json.load(_f).keys())
 
-client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+# ── system prompt ────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """\
-You are a SQL expert for SQLite databases. Given a database schema, \
-sample data, an optional external knowledge hint, and a natural language question, \
-generate the correct SQL query.
+SYSTEM_PROMPT = textwrap.dedent("""\
+    You are a SQL expert for SQLite databases. Given a database schema,
+    sample data, an optional external knowledge hint, and a natural language
+    question, generate the correct SQL query.
 
-Rules:
-- Output ONLY the SQL query, no explanation or markdown fences.
-- Use SQLite dialect (e.g., SUBSTR not SUBSTRING, IIF or CASE WHEN, no ILIKE).
-- Use table and column names exactly as they appear in the schema.
-- If the question involves a percentage, use CAST(... AS REAL) to avoid integer division.
-- If the evidence provides domain knowledge, use it to interpret the question correctly."""
+    Rules:
+    - Output ONLY the SQL query, no explanation or markdown fences.
+    - Use SQLite dialect (e.g., SUBSTR not SUBSTRING, IIF or CASE WHEN, no ILIKE).
+    - Use table and column names exactly as they appear in the schema.
+    - If the question involves a percentage, use CAST(... AS REAL) to avoid integer division.
+    - If the evidence provides domain knowledge, use it to interpret the question correctly.
+""").strip()
+
+# ── stdout helpers (validator-exact format) ──────────────────────────────────
 
 
-def build_prompt(obs, prev_sql: str = "", prev_feedback: str = "") -> list[dict]:
-    """Build chat messages for the LLM."""
-    user_parts = []
+def emit_start(task_id: str) -> None:
+    print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}", flush=True)
+
+
+def emit_step(
+    step: int,
+    action: str,
+    reward: float,
+    done: bool,
+    error: str | None = None,
+) -> None:
+    done_s = str(done).lower()
+    err_s = error[:200] if error else "null"
+    print(
+        f"[STEP] step={step} action={action!r} "
+        f"reward={reward:.2f} done={done_s} error={err_s}",
+        flush=True,
+    )
+
+
+def emit_end(success: bool, steps: int, rewards: list[float]) -> None:
+    success_s = str(success).lower()
+    rewards_s = ",".join(f"{r:.2f}" for r in rewards)
+    print(
+        f"[END] success={success_s} steps={steps} rewards={rewards_s}",
+        flush=True,
+    )
+
+
+# ── prompt building ──────────────────────────────────────────────────────────
+
+
+def build_prompt(
+    obs: Any,
+    prev_sql: str = "",
+    prev_feedback: str = "",
+) -> list[dict[str, str]]:
+    """Build chat messages from the current observation."""
+    user_parts: list[str] = []
+
     if obs.schema_linking:
         user_parts.append(f"DATABASE SCHEMA:\n{obs.schema_linking}")
     if obs.sample_rows:
         user_parts.append(f"SAMPLE DATA:\n{obs.sample_rows}")
     if obs.evidence:
         user_parts.append(f"EXTERNAL KNOWLEDGE:\n{obs.evidence}")
+
     user_parts.append(f"QUESTION: {obs.question}")
 
     if prev_sql and prev_feedback:
@@ -68,8 +112,11 @@ def build_prompt(obs, prev_sql: str = "", prev_feedback: str = "") -> list[dict]
     ]
 
 
+# ── SQL extraction ───────────────────────────────────────────────────────────
+
+
 def extract_sql(text: str) -> str:
-    """Extract SQL from LLM response, stripping markdown fences."""
+    """Extract SQL from LLM response, stripping markdown fences if present."""
     sql = text.strip()
     if sql.startswith("```"):
         lines = sql.split("\n")
@@ -78,11 +125,14 @@ def extract_sql(text: str) -> str:
     return sql
 
 
-def run_task(env, task_id: str) -> None:
-    """Run a single task episode."""
+# ── episode runner ───────────────────────────────────────────────────────────
+
+
+def run_task(env: Any, client: OpenAI, task_id: str) -> None:
+    """Run a single task episode with self-correction loop."""
     result = env.reset(task_id=task_id)
     obs = result.observation
-    print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}")
+    emit_start(task_id)
 
     rewards: list[float] = []
     prev_sql = ""
@@ -90,6 +140,8 @@ def run_task(env, task_id: str) -> None:
 
     for step_num in range(1, MAX_STEPS + 1):
         messages = build_prompt(obs, prev_sql, prev_feedback)
+
+        error: str | None = None
         try:
             response = client.chat.completions.create(
                 model=MODEL_NAME,
@@ -98,8 +150,9 @@ def run_task(env, task_id: str) -> None:
                 max_tokens=500,
             )
             sql = extract_sql(response.choices[0].message.content or "")
-        except Exception as e:
-            print(f"[STEP] step={step_num} action='ERROR' reward=0.00 done=false error={e}")
+        except Exception as exc:
+            error = str(exc)[:200]
+            emit_step(step_num, "ERROR", 0.00, False, error)
             continue
 
         result = env.step(BirdSQLAction(sql_query=sql))
@@ -108,12 +161,8 @@ def run_task(env, task_id: str) -> None:
         done = result.done
         rewards.append(reward)
 
-        error_str = obs.feedback if not obs.execution_success else "null"
-        print(
-            f"[STEP] step={step_num} action={sql!r} "
-            f"reward={reward:.2f} done={str(done).lower()} "
-            f"error={error_str}"
-        )
+        error = obs.feedback if not obs.execution_success else None
+        emit_step(step_num, sql, reward, done, error)
 
         if done:
             break
@@ -123,23 +172,24 @@ def run_task(env, task_id: str) -> None:
         prev_feedback = obs.feedback
 
     success = any(r >= 0.99 for r in rewards)
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(
-        f"[END] success={str(success).lower()} "
-        f"steps={len(rewards)} rewards={rewards_str}"
-    )
+    emit_end(success, len(rewards), rewards)
+
+
+# ── main ─────────────────────────────────────────────────────────────────────
 
 
 def main() -> None:
-    env_url = os.getenv("ENV_URL", "http://localhost:7860")
-    with BirdText2SQLEnv(base_url=env_url).sync() as env:
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+
+    with BirdText2SQLEnv(base_url=ENV_URL).sync() as env:
         for task_id in TASKS:
             try:
-                run_task(env, task_id)
-            except Exception as e:
-                print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}")
-                print(f"[STEP] step=1 action='ERROR' reward=0.00 done=true error={e}")
-                print(f"[END] success=false steps=0 rewards=0.00")
+                run_task(env, client, task_id)
+            except Exception:
+                error_msg = traceback.format_exc().splitlines()[-1][:200]
+                emit_start(task_id)
+                emit_step(1, "ERROR", 0.00, True, error_msg)
+                emit_end(False, 0, [0.00])
 
 
 if __name__ == "__main__":
