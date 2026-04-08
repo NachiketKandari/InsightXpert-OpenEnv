@@ -54,12 +54,17 @@ def build_linking(
     tasks_path: Path,
     db_dir: Path,
     profiles_dir: Path | None = None,
+    evidence: bool = False,
 ) -> dict[str, dict]:
     """Build perfect schema linking for all tasks.
 
     If profiles_dir is provided and contains pre-computed profile.json/schema.json
     files (from InsightXpert), those are loaded instead of re-profiling. This
     preserves LLM-generated column summaries from the full profiling pipeline.
+
+    When evidence=True, loads the evidence-enriched profile from the evidence/
+    subdirectory (schema.json stays in the parent). Evidence profiles contain
+    business-semantic column descriptions generated with domain knowledge.
 
     Returns a dict mapping task_id -> {task_id, question_id, question, db_id,
     difficulty, schema_text}.
@@ -81,7 +86,10 @@ def build_linking(
             loaded = False
             if profiles_dir:
                 schema_path = profiles_dir / db_id / "schema.json"
-                profile_path = profiles_dir / db_id / "profile.json"
+                if evidence:
+                    profile_path = profiles_dir / db_id / "evidence" / "profile.json"
+                else:
+                    profile_path = profiles_dir / db_id / "profile.json"
                 if schema_path.exists() and profile_path.exists():
                     schema_cache[db_id] = DatabaseSchema.model_validate_json(
                         schema_path.read_text()
@@ -90,7 +98,8 @@ def build_linking(
                         profile_path.read_text()
                     )
                     loaded = True
-                    logger.info("Loaded pre-computed profile for '%s'", db_id)
+                    tag = " (evidence-enriched)" if evidence else ""
+                    logger.info("Loaded pre-computed profile%s for '%s'", tag, db_id)
 
             if not loaded:
                 # Profile from scratch (stats only, no LLM summaries)
@@ -161,6 +170,13 @@ def main() -> None:
              "Each db should have <profiles-dir>/<db_id>/schema.json and profile.json.",
     )
     parser.add_argument(
+        "--evidence",
+        action="store_true",
+        default=False,
+        help="Use evidence-enriched profiles (loads from <profiles-dir>/<db_id>/evidence/profile.json). "
+             "These contain business-semantic column descriptions generated with domain knowledge.",
+    )
+    parser.add_argument(
         "-o", "--output",
         type=Path,
         default=PROJECT_ROOT / "data" / "schema_linking.json",
@@ -172,6 +188,7 @@ def main() -> None:
         tasks_path=args.tasks,
         db_dir=args.db_dir,
         profiles_dir=args.profiles_dir,
+        evidence=args.evidence,
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
