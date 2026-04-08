@@ -31,6 +31,8 @@ Thumbs.db
 # Data (SQLite files tracked via Git LFS for HF Spaces deployment)
 data/perfect_linking_*.json
 data/profiles/
+data/tasks_200.json
+data/schema_linking_200.json
 
 # Project-specific
 transcript.txt

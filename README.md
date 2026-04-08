@@ -15,7 +15,7 @@ An [OpenEnv](https://github.com/open-env/openenv)-compliant environment where an
 
 ## Overview
 
-- **200 curated tasks** across 3 difficulty levels (85 simple, 65 moderate, 50 challenging)
+- **100 curated tasks** across 3 difficulty levels (50 simple, 30 moderate, 20 challenging)
 - **5 SQLite databases** (california_schools, debit_card_specializing, financial, formula_1, toxicology) from the BIRD benchmark
 - **Fine-grained partial rewards** (0.0-1.0) via execution accuracy + Soft-F1 scoring
 - **Self-correction loop**: agents get up to 5 attempts per task with grader feedback
@@ -66,13 +66,13 @@ Order-sensitive comparison is used only when the gold SQL contains ORDER BY.
 
 ## Tasks
 
-200 tasks across 5 databases (california_schools, debit_card_specializing, financial, formula_1, toxicology):
+100 tasks across 5 databases (california_schools, debit_card_specializing, financial, formula_1, toxicology):
 
 | Difficulty | Count | SQL Patterns |
 |------------|-------|-------------|
-| Simple (85) | Basic SELECT, JOIN, WHERE, DISTINCT, COUNT, ORDER BY |
-| Moderate (65) | Multi-table JOIN, AVG, CASE WHEN, percentage calculations |
-| Challenging (50) | Nested subqueries, CTE, IIF, STRFTIME, complex aggregation |
+| Simple (50) | Basic SELECT, JOIN, WHERE, DISTINCT, COUNT, ORDER BY |
+| Moderate (30) | Multi-table JOIN, AVG, CASE WHEN, percentage calculations |
+| Challenging (20) | Nested subqueries, CTE, IIF, STRFTIME, complex aggregation |
 
 Tasks are selected from [BIRD Mini-Dev](https://huggingface.co/datasets/birdsql/bird_mini_dev) with a mix of difficulty: some are reliably solvable by current models, some are partially solvable, and some remain unsolved — ensuring meaningful reward gradients for RL training.
 
@@ -121,7 +121,7 @@ requirements.txt         # For Docker
 Dockerfile               # Docker build
 README.md                # This file
 data/
-  tasks.json             # Curated task registry (200 tasks)
+  tasks.json             # Curated task registry (100 tasks)
   schema_linking.json    # Pre-computed perfect schema linking per task
   databases/             # BIRD Mini-Dev SQLite files
     california_schools/

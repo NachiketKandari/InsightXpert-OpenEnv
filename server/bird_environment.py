@@ -103,9 +103,6 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
         source.backup(self._db)
         source.close()
 
-        # Extract sample rows
-        sample_rows = self._get_sample_rows(_SAMPLE_ROWS_LIMIT)
-
         # Reset episode state
         self._current_task = task
         self._step_count = 0
@@ -128,7 +125,7 @@ class BirdEnvironment(Environment[BirdSQLAction, BirdSQLObservation, BirdSQLStat
             question=task["question"],
             evidence=task.get("evidence", ""),
             schema_linking=self._schema_linking.get(task_id, ""),
-            sample_rows=sample_rows,
+            sample_rows="",
             reward=0.0,
             done=False,
         )

@@ -194,17 +194,6 @@ def _format_task_info(obs: Dict[str, Any]) -> str:
             "",
             "</details>",
         ]
-    sample = obs.get("sample_rows", "")
-    if sample:
-        sample_md = _sample_rows_to_markdown(sample)
-        lines += [
-            "",
-            "<details><summary><b>Sample Rows</b></summary>",
-            "",
-            sample_md,
-            "",
-            "</details>",
-        ]
     return "\n".join(lines)
 
 
@@ -331,11 +320,11 @@ Order-sensitive comparison is used when the gold SQL contains `ORDER BY`.
 
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:500px;margin:16px 0">
 {_stat_card("50", "Simple")}
-{_stat_card("50", "Moderate")}
-{_stat_card("50", "Challenging")}
+{_stat_card("30", "Moderate")}
+{_stat_card("20", "Challenging")}
 </div>
 
-**150 total tasks** across **5 SQLite databases** from the BIRD Mini-Dev benchmark.
+**100 total tasks** across **5 SQLite databases** from the BIRD Mini-Dev benchmark.
 
 ---
 
@@ -467,7 +456,7 @@ def build_custom_gradio_app(
         # Stats row
         gr.HTML(
             '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:8px 0 16px 0">'
-            + _stat_card("150", "Tasks")
+            + _stat_card("100", "Tasks")
             + _stat_card("5", "Databases")
             + _stat_card("5", "Steps / Episode")
             + _stat_card("0 – 1", "Reward Range")
