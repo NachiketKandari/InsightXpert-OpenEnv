@@ -62,7 +62,12 @@ async def _root_redirect():
     return RedirectResponse(url="/web/")
 
 
-app = gr.mount_gradio_app(app, _blocks, path="/web")
+try:
+    from .gradio_app import CSS as _CUSTOM_CSS
+except ImportError:
+    from server.gradio_app import CSS as _CUSTOM_CSS
+
+app = gr.mount_gradio_app(app, _blocks, path="/web", css=_CUSTOM_CSS)
 
 
 def main():
