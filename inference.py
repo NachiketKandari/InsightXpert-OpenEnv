@@ -128,13 +128,30 @@ def extract_sql(text: str) -> str:
 
 
 async def main() -> None:
+    # ── diagnostic dump (visible in validator logs) ─────────────────────────
+    print(
+        f"[DEBUG] ENV_URL={ENV_URL!r} IMAGE_NAME={IMAGE_NAME!r} "
+        f"API_BASE_URL={API_BASE_URL!r} MODEL_NAME={MODEL_NAME!r} "
+        f"API_KEY={'set' if API_KEY else 'MISSING'}",
+        flush=True,
+    )
+
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    if ENV_URL:
-        env = BirdText2SQLEnv(base_url=ENV_URL)
-        await env.connect()
-    else:
-        env = await BirdText2SQLEnv.from_docker_image(IMAGE_NAME)
+    # ── connect to environment ──────────────────────────────────────────────
+    try:
+        if ENV_URL:
+            env = BirdText2SQLEnv(base_url=ENV_URL)
+            await env.connect()
+        elif IMAGE_NAME:
+            env = await BirdText2SQLEnv.from_docker_image(IMAGE_NAME)
+        else:
+            raise RuntimeError(
+                "Neither ENV_URL nor IMAGE_NAME is set — cannot connect to environment"
+            )
+    except Exception as exc:
+        print(f"[DEBUG] FATAL: environment connection failed: {exc}", flush=True)
+        raise
 
     for task_id in TASKS:
         rewards: List[float] = []
@@ -202,4 +219,10 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as exc:
+        import traceback
+        print(f"[DEBUG] FATAL unhandled exception: {exc}", flush=True)
+        traceback.print_exc()
+        raise
