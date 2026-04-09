@@ -8,6 +8,7 @@ using grader feedback across up to MAX_STEPS attempts per task.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import textwrap
@@ -24,7 +25,8 @@ from models import BirdSQLAction
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
 API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
-ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
+ENV_URL = os.getenv("ENV_URL")
+IMAGE_NAME = os.getenv("IMAGE_NAME", "bird-text2sql-env")
 
 BENCHMARK = "bird-text2sql"
 MAX_STEPS = 5
@@ -178,10 +180,17 @@ def run_task(env: Any, client: OpenAI, task_id: str) -> None:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
-def main() -> None:
+async def main() -> None:
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    with BirdText2SQLEnv(base_url=ENV_URL).sync() as env:
+    if ENV_URL:
+        # Direct connection to a running server (local dev)
+        env_client = BirdText2SQLEnv(base_url=ENV_URL)
+    else:
+        # Spin up Docker container (validator / production)
+        env_client = await BirdText2SQLEnv.from_docker_image(IMAGE_NAME)
+
+    with env_client.sync() as env:
         for task_id in TASKS:
             try:
                 run_task(env, client, task_id)
@@ -194,4 +203,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
