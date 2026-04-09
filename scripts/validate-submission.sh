@@ -140,7 +140,7 @@ if [ -f "$REPO_DIR/inference.py" ]; then
   fi
 
   # Environment variables
-  for var in API_BASE_URL MODEL_NAME HF_TOKEN; do
+  for var in API_BASE_URL MODEL_NAME API_KEY; do
     if grep -q "$var" "$REPO_DIR/inference.py"; then
       pass "inference.py references $var"
     else

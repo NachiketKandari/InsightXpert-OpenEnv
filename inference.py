@@ -23,7 +23,7 @@ from models import BirdSQLAction
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
-HF_TOKEN = os.getenv("HF_TOKEN")
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
 BENCHMARK = "bird-text2sql"
@@ -179,7 +179,7 @@ def run_task(env: Any, client: OpenAI, task_id: str) -> None:
 
 
 def main() -> None:
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     with BirdText2SQLEnv(base_url=ENV_URL).sync() as env:
         for task_id in TASKS:

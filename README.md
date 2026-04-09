@@ -87,7 +87,7 @@ pip install -e ".[inference]"
 uvicorn server.app:app --host 0.0.0.0 --port 7860
 
 # Run the baseline agent (in another terminal)
-export HF_TOKEN=your_hf_token
+export API_KEY=your_api_key  # or HF_TOKEN for local dev
 python inference.py
 ```
 
@@ -104,7 +104,7 @@ docker run -p 7860:7860 bird-text2sql-env
 |----------|---------|-------------|
 | `API_BASE_URL` | `https://router.huggingface.co/v1` | LLM API endpoint (OpenAI-compatible) |
 | `MODEL_NAME` | `Qwen/Qwen3-8B` | Model to use for inference |
-| `HF_TOKEN` | - | HuggingFace API token |
+| `API_KEY` / `HF_TOKEN` | - | LLM API key (validator injects `API_KEY`) |
 | `ENV_URL` | `http://localhost:7860` | Environment server URL |
 
 ## File Structure
