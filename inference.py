@@ -12,8 +12,7 @@ import asyncio
 import json
 import os
 import textwrap
-import traceback
-from typing import Any
+from typing import Any, List, Optional
 
 from openai import OpenAI
 
@@ -22,11 +21,11 @@ from models import BirdSQLAction
 
 # ── configuration ────────────────────────────────────────────────────────────
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3-8B")
-API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen3-8B"
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+IMAGE_NAME = os.getenv("IMAGE_NAME")
 ENV_URL = os.getenv("ENV_URL")
-IMAGE_NAME = os.getenv("IMAGE_NAME", "bird-text2sql-env")
 
 BENCHMARK = "bird-text2sql"
 MAX_STEPS = 5
@@ -52,31 +51,31 @@ SYSTEM_PROMPT = textwrap.dedent("""\
 # ── stdout helpers (validator-exact format) ──────────────────────────────────
 
 
-def emit_start(task_id: str) -> None:
-    print(f"[START] task={task_id} env={BENCHMARK} model={MODEL_NAME}", flush=True)
+def log_start(task: str) -> None:
+    print(f"[START] task={task} env={BENCHMARK} model={MODEL_NAME}", flush=True)
 
 
-def emit_step(
+def log_step(
     step: int,
     action: str,
     reward: float,
     done: bool,
-    error: str | None = None,
+    error: Optional[str] = None,
 ) -> None:
-    done_s = str(done).lower()
-    err_s = error[:200] if error else "null"
+    error_val = error[:200] if error else "null"
+    done_val = str(done).lower()
     print(
         f"[STEP] step={step} action={action} "
-        f"reward={reward:.2f} done={done_s} error={err_s}",
+        f"reward={reward:.2f} done={done_val} error={error_val}",
         flush=True,
     )
 
 
-def emit_end(success: bool, steps: int, rewards: list[float]) -> None:
-    success_s = str(success).lower()
-    rewards_s = ",".join(f"{r:.2f}" for r in rewards)
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
-        f"[END] success={success_s} steps={steps} rewards={rewards_s}",
+        f"[END] success={str(success).lower()} steps={steps} "
+        f"score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
 
@@ -94,8 +93,6 @@ def build_prompt(
 
     if obs.schema_linking:
         user_parts.append(f"DATABASE SCHEMA:\n{obs.schema_linking}")
-    if obs.sample_rows:
-        user_parts.append(f"SAMPLE DATA:\n{obs.sample_rows}")
     if obs.evidence:
         user_parts.append(f"EXTERNAL KNOWLEDGE:\n{obs.evidence}")
 
@@ -127,56 +124,6 @@ def extract_sql(text: str) -> str:
     return sql
 
 
-# ── episode runner ───────────────────────────────────────────────────────────
-
-
-def run_task(env: Any, client: OpenAI, task_id: str) -> None:
-    """Run a single task episode with self-correction loop."""
-    result = env.reset(task_id=task_id)
-    obs = result.observation
-    emit_start(task_id)
-
-    rewards: list[float] = []
-    prev_sql = ""
-    prev_feedback = ""
-
-    for step_num in range(1, MAX_STEPS + 1):
-        messages = build_prompt(obs, prev_sql, prev_feedback)
-
-        error: str | None = None
-        try:
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=messages,
-                temperature=0.0,
-                max_tokens=500,
-            )
-            sql = extract_sql(response.choices[0].message.content or "")
-        except Exception as exc:
-            error = str(exc)[:200]
-            emit_step(step_num, "ERROR", 0.00, True, error)
-            break
-
-        result = env.step(BirdSQLAction(sql_query=sql))
-        obs = result.observation
-        reward = result.reward or 0.0
-        done = result.done
-        rewards.append(reward)
-
-        error = obs.feedback if not obs.execution_success else None
-        emit_step(step_num, sql, reward, done, error)
-
-        if done:
-            break
-
-        # Save for self-correction on next step
-        prev_sql = sql
-        prev_feedback = obs.feedback
-
-    success = any(r >= 1.0 for r in rewards)
-    emit_end(success, len(rewards), rewards)
-
-
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
@@ -184,22 +131,74 @@ async def main() -> None:
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     if ENV_URL:
-        # Direct connection to a running server (local dev)
-        env_client = BirdText2SQLEnv(base_url=ENV_URL)
+        env = BirdText2SQLEnv(base_url=ENV_URL)
+        await env.connect()
     else:
-        # Spin up Docker container (validator / production)
-        env_client = await BirdText2SQLEnv.from_docker_image(IMAGE_NAME)
+        env = await BirdText2SQLEnv.from_docker_image(IMAGE_NAME)
 
-    with env_client.sync() as env:
-        for task_id in TASKS:
-            try:
-                run_task(env, client, task_id)
-            except Exception:
-                tb_lines = traceback.format_exc().splitlines()
-                error_msg = (tb_lines[-1] if tb_lines else "Unknown error")[:200]
-                emit_start(task_id)
-                emit_step(1, "ERROR", 0.00, True, error_msg)
-                emit_end(False, 1, [0.00])
+    for task_id in TASKS:
+        rewards: List[float] = []
+        steps_taken = 0
+        score = 0.0
+        success = False
+
+        log_start(task=task_id)
+
+        try:
+            result = await env.reset(task_id=task_id)
+            obs = result.observation
+
+            prev_sql = ""
+            prev_feedback = ""
+
+            for step_num in range(1, MAX_STEPS + 1):
+                if result.done:
+                    break
+
+                messages = build_prompt(obs, prev_sql, prev_feedback)
+
+                try:
+                    response = client.chat.completions.create(
+                        model=MODEL_NAME,
+                        messages=messages,
+                        temperature=0.0,
+                        max_tokens=500,
+                    )
+                    sql = extract_sql(response.choices[0].message.content or "")
+                except Exception as exc:
+                    print(f"[DEBUG] Model request failed: {exc}", flush=True)
+                    sql = "SELECT 1"
+
+                result = await env.step(BirdSQLAction(sql_query=sql))
+                obs = result.observation
+                reward = result.reward or 0.0
+                done = result.done
+
+                rewards.append(reward)
+                steps_taken = step_num
+
+                error = obs.feedback if not obs.execution_success else None
+                log_step(step=step_num, action=sql, reward=reward, done=done, error=error)
+
+                if done:
+                    break
+
+                prev_sql = sql
+                prev_feedback = obs.feedback
+
+            score = max(rewards) if rewards else 0.0
+            score = min(max(score, 0.0), 1.0)
+            success = score >= 0.95
+
+        except Exception as exc:
+            print(f"[DEBUG] Task {task_id} error: {exc}", flush=True)
+
+        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+
+    try:
+        await env.close()
+    except Exception as e:
+        print(f"[DEBUG] env.close() error: {e}", flush=True)
 
 
 if __name__ == "__main__":
