@@ -85,9 +85,10 @@ def log_step(
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    display_score = max(0.01, min(0.99, float(score)))
     print(
         f"[END] success={str(success).lower()} steps={steps} "
-        f"score={score:.2f} rewards={rewards_str}",
+        f"score={display_score:.2f} rewards={rewards_str}",
         flush=True,
     )
 
@@ -279,27 +280,13 @@ async def main() -> None:
         task_ids = ["simple_1", "simple_2", "simple_3"]
         log_debug(f"Using fallback task list: {task_ids}")
 
-    # Sync OpenAI client per submission checklist item 4.
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    if not HF_TOKEN:
+        log_debug("HF_TOKEN is not set — aborting")
+        for task_id in task_ids:
+            emit_skipped(task_id, "HF_TOKEN not set")
+        return
 
-    # Pre-flight: GET {API_BASE_URL}/models with the provided key. Guarantees
-    # at least one authenticated request lands on the validator's proxy even
-    # if chat.completions later rejects our model. Failures are logged with
-    # full HTTP context.
-    try:
-        models_page = client.models.list()
-        ids = [getattr(m, "id", "?") for m in getattr(models_page, "data", [])][:10]
-        log_debug(f"proxy probe OK: {len(ids)} model(s) listed: {ids}")
-    except Exception as exc:
-        status = getattr(exc, "status_code", None)
-        body = ""
-        resp = getattr(exc, "response", None)
-        if resp is not None:
-            body = (getattr(resp, "text", "") or "")[:500]
-        log_debug(
-            f"proxy probe failed: type={type(exc).__name__} "
-            f"status={status} msg={str(exc)[:300]} body={body}"
-        )
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
     env = None
     try:
