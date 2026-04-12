@@ -25,9 +25,9 @@ from openai import OpenAI
 
 # ── configuration ────────────────────────────────────────────────────────────
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "llama-3.3-70b-versatile")
-HF_TOKEN = os.getenv("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 
 IMAGE_NAME = os.getenv("IMAGE_NAME") or os.getenv("LOCAL_IMAGE_NAME")
 ENV_URL = os.getenv("ENV_URL")
@@ -266,11 +266,11 @@ async def main() -> None:
     start = time.monotonic()
     deadline = start + TOTAL_BUDGET_S
 
-    key_prefix = f"{HF_TOKEN[:4]}***" if HF_TOKEN else "NONE"
+    key_prefix = f"{API_KEY[:4]}***" if API_KEY else "NONE"
     log_debug(
         f"ENV_URL={ENV_URL!r} IMAGE_NAME={IMAGE_NAME!r} "
         f"API_BASE_URL={API_BASE_URL!r} MODEL_NAME={MODEL_NAME!r} "
-        f"hf_token_prefix={key_prefix} BUDGET_S={TOTAL_BUDGET_S}"
+        f"api_key_prefix={key_prefix} BUDGET_S={TOTAL_BUDGET_S}"
     )
 
     task_ids = load_task_ids()
@@ -280,13 +280,13 @@ async def main() -> None:
         task_ids = ["simple_1", "simple_2", "simple_3"]
         log_debug(f"Using fallback task list: {task_ids}")
 
-    if not HF_TOKEN:
-        log_debug("HF_TOKEN is not set — aborting")
+    if not API_KEY:
+        log_debug("API_KEY and HF_TOKEN are both unset — aborting")
         for task_id in task_ids:
-            emit_skipped(task_id, "HF_TOKEN not set")
+            emit_skipped(task_id, "API_KEY not set")
         return
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     env = None
     try:
