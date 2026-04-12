@@ -293,6 +293,25 @@ async def main() -> None:
 
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY or "dummy")
 
+    # Pre-flight: GET {API_BASE_URL}/models with the provided key. This is the
+    # cheapest request that proves to the validator's proxy that we routed a
+    # call through it on the key they injected. Failures are logged with full
+    # HTTP context so the next log tells us exactly what's wrong.
+    try:
+        models_page = client.models.list()
+        ids = [getattr(m, "id", "?") for m in getattr(models_page, "data", [])][:10]
+        log_debug(f"proxy probe OK: {len(ids)} model(s) listed: {ids}")
+    except Exception as exc:
+        status = getattr(exc, "status_code", None)
+        body = ""
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            body = (getattr(resp, "text", "") or "")[:500]
+        log_debug(
+            f"proxy probe failed: type={type(exc).__name__} "
+            f"status={status} msg={str(exc)[:300]} body={body}"
+        )
+
     env = None
     try:
         env = await connect_env()
