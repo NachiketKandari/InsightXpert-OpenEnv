@@ -21,7 +21,7 @@ import traceback
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 # ── configuration ────────────────────────────────────────────────────────────
 
@@ -155,9 +155,9 @@ def extract_sql(text: str) -> str:
     return sql or FALLBACK_SQL
 
 
-def get_sql(client: OpenAI, messages: List[dict]) -> str:
+async def get_sql(client: AsyncOpenAI, messages: List[dict]) -> str:
     try:
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
             temperature=0.0,
@@ -217,7 +217,7 @@ def emit_skipped(task_id: str, reason: str) -> None:
 # ── task execution ───────────────────────────────────────────────────────────
 
 
-async def run_task(env, client: OpenAI, task_id: str, deadline: float) -> None:
+async def run_task(env, client: AsyncOpenAI, task_id: str, deadline: float) -> None:
     rewards: List[float] = []
     steps_taken = 0
     score = 0.0
@@ -237,7 +237,7 @@ async def run_task(env, client: OpenAI, task_id: str, deadline: float) -> None:
                 break
 
             messages = build_messages(obs, prev_sql, prev_feedback)
-            sql = get_sql(client, messages)
+            sql = await get_sql(client, messages)
 
             # Import action type lazily
             from models import BirdSQLAction  # noqa: E402
@@ -291,14 +291,17 @@ async def main() -> None:
         task_ids = ["simple_1", "simple_2", "simple_3"]
         log_debug(f"Using fallback task list: {task_ids}")
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY or "dummy")
+    # Match the working-submission pattern exactly: AsyncOpenAI, api_key can be
+    # None so the SDK falls back to OPENAI_API_KEY from env if neither HF_TOKEN
+    # nor API_KEY was injected.
+    client = AsyncOpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     # Pre-flight: GET {API_BASE_URL}/models with the provided key. This is the
     # cheapest request that proves to the validator's proxy that we routed a
     # call through it on the key they injected. Failures are logged with full
     # HTTP context so the next log tells us exactly what's wrong.
     try:
-        models_page = client.models.list()
+        models_page = await client.models.list()
         ids = [getattr(m, "id", "?") for m in getattr(models_page, "data", [])][:10]
         log_debug(f"proxy probe OK: {len(ids)} model(s) listed: {ids}")
     except Exception as exc:
