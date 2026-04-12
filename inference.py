@@ -73,7 +73,7 @@ def log_step(
     done: bool,
     error: Optional[str] = None,
 ) -> None:
-    error_val = error[:200] if error else "null"
+    error_val = " ".join(error.split())[:200] if error else "null"
     done_val = str(done).lower()
     action_one_line = " ".join(str(action).split())
     print(
@@ -293,7 +293,7 @@ async def main() -> None:
         env = await connect_env()
     except Exception as exc:
         log_debug(f"Environment connection failed: {exc}")
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stderr)
         for task_id in task_ids:
             emit_skipped(task_id, f"env connect failed: {exc}")
         return
@@ -307,11 +307,7 @@ async def main() -> None:
                 await run_task(env, client, task_id, deadline)
             except Exception as exc:
                 log_debug(f"Unexpected error on {task_id}: {exc}")
-                traceback.print_exc()
-                try:
-                    log_end(success=False, steps=0, score=0.0, rewards=[])
-                except Exception:
-                    pass
+                traceback.print_exc(file=sys.stderr)
     finally:
         try:
             await env.close()
@@ -326,7 +322,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as exc:
         log_debug(f"FATAL unhandled exception: {exc}")
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stderr)
     # Always exit 0 — the validator greps [START]/[STEP]/[END] from stdout,
     # and a non-zero exit forces the "unhandled exception" failure mode.
     sys.exit(0)
