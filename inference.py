@@ -26,8 +26,19 @@ from openai import OpenAI
 # ── configuration ────────────────────────────────────────────────────────────
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen3-8B"
-API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
+MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+
+
+def _resolve_api_key() -> tuple[Optional[str], str]:
+    """Return (key, source_name) checking env vars in mandatory-spec order."""
+    for name in ("HF_TOKEN", "API_KEY", "OPENAI_API_KEY"):
+        val = os.getenv(name)
+        if val:
+            return val, name
+    return None, "NONE"
+
+
+API_KEY, API_KEY_SOURCE = _resolve_api_key()
 
 IMAGE_NAME = os.getenv("IMAGE_NAME") or os.getenv("LOCAL_IMAGE_NAME")
 ENV_URL = os.getenv("ENV_URL")
@@ -156,7 +167,15 @@ def get_sql(client: OpenAI, messages: List[dict]) -> str:
         content = completion.choices[0].message.content or ""
         return extract_sql(content)
     except Exception as exc:
-        log_debug(f"Model request failed: {exc}")
+        status = getattr(exc, "status_code", None)
+        body = ""
+        resp = getattr(exc, "response", None)
+        if resp is not None:
+            body = (getattr(resp, "text", "") or "")[:500]
+        log_debug(
+            f"Model request failed: type={type(exc).__name__} "
+            f"status={status} msg={str(exc)[:300]} body={body}"
+        )
         return FALLBACK_SQL
 
 
@@ -257,10 +276,11 @@ async def main() -> None:
     start = time.monotonic()
     deadline = start + TOTAL_BUDGET_S
 
+    key_prefix = f"{API_KEY[:4]}***" if API_KEY else "NONE"
     log_debug(
         f"ENV_URL={ENV_URL!r} IMAGE_NAME={IMAGE_NAME!r} "
         f"API_BASE_URL={API_BASE_URL!r} MODEL_NAME={MODEL_NAME!r} "
-        f"API_KEY={'set' if API_KEY else 'MISSING'} "
+        f"api_key_source={API_KEY_SOURCE} api_key_prefix={key_prefix} "
         f"BUDGET_S={TOTAL_BUDGET_S}"
     )
 
