@@ -29,8 +29,8 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 
-IMAGE_NAME = os.getenv("IMAGE_NAME") or os.getenv("LOCAL_IMAGE_NAME")
-ENV_URL = os.getenv("ENV_URL")
+IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME")
+ENV_URL = os.getenv("ENV_BASE_URL") or os.getenv("ENV_URL")
 HF_SPACE_REPO = os.getenv("HF_SPACE_REPO") or "NachiketKandari/InsightXpert-OpenEnv"
 
 BENCHMARK = "bird-text2sql"
@@ -59,7 +59,7 @@ SYSTEM_PROMPT = textwrap.dedent("""\
 
 
 def log_debug(msg: str) -> None:
-    print(f"[DEBUG] {msg}", flush=True)
+    print(f"[DEBUG] {msg}", file=sys.stderr, flush=True)
 
 
 def log_start(task: str) -> None:
